@@ -1,0 +1,4 @@
+.vs/
+build/
+compile_flags.txt
+*.exe
