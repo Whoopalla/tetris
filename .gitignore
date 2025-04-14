@@ -1,4 +1,6 @@
 .vs/
 build/
+lib/
 compile_flags.txt
 *.exe
+*.o
