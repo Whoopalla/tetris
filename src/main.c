@@ -30,6 +30,8 @@
 
 typedef Vector2 Parts[4];
 
+typedef enum { Down, Left, Right } Direction;
+
 typedef enum {
   I = 0,
   L = I + TET_I_STATES, // 2
@@ -68,10 +70,10 @@ Parts tet_states[O + 1] = (Parts[]){
     (Vector2){1, 0},  (Vector2){1, 1},  (Vector2){1, 2}, (Vector2){0, 1},
 
     (Vector2){1, 0},  (Vector2){2, 0},  (Vector2){1, 1}, (Vector2){0, 1}, // S
-    (Vector2){1, -1},  (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){2, 1},
+    (Vector2){1, -1}, (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){2, 1},
 
     (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){2, 1}, // Z
-    (Vector2){2, -1},  (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){2, 0},
+    (Vector2){2, -1}, (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){2, 0},
 
     (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){0, 1}, (Vector2){1, 1}, // O
 };
@@ -84,6 +86,8 @@ typedef struct {
 } Tetromino;
 
 bool board[BOARD_WIDTH][BOARD_HEIGHT + BOARD_HEIGHT_EXTRA] = {0};
+Tetromino tetromino_bag[7] = {0};
+int tetromino_bag_used = 0;
 
 static int screen_width;
 static int screen_height;
@@ -106,7 +110,6 @@ bool fast_shift_down = false;
 bool fast_rotate = false;
 
 Tetromino tetromino;
-typedef enum { Down, Left, Right } Direction;
 
 bool is_tetromino_at(int part_index, Vector2 index) {
   for (size_t i = 0; i < 4; i++) {
@@ -236,12 +239,31 @@ bool tetromino_grounded(void) {
   return false;
 }
 
-void spawn_tetromino(void) {
+void refill_tetromino_bag(void) {
+  Tetromino t;
+  int r;
+  for (size_t i = 0; i < 7; i++) {
+    tetromino_bag[i] = (Tetromino){
+        .type = tetromino_types[i], .state = 0, .pos = (Vector2){0.0f, 0.0f}};
+    memcpy(tetromino_bag[i].parts, tet_states[tetromino_types[i]],
+           sizeof(Parts));
+  }
+
   srand(time(NULL));
-  tetromino.type = tetromino_types[rand() % 6];
-  tetromino.state = 0;
-  tetromino.pos = (Vector2){0, 0};
-  memcpy(tetromino.parts, tet_states[tetromino.type], sizeof(Parts));
+  for (size_t i = 6; i >= 1; i--) {
+    r = rand() % i;
+    t = tetromino_bag[r];
+    tetromino_bag[r] = tetromino_bag[i];
+    tetromino_bag[i] = t;
+  }
+  tetromino_bag_used = 0;
+}
+
+void spawn_tetromino(void) {
+  if (tetromino_bag_used == 7) {
+    refill_tetromino_bag();
+  }
+  tetromino = tetromino_bag[tetromino_bag_used++];
 }
 
 int main(void) {
@@ -257,6 +279,7 @@ int main(void) {
 
   printf("I: %d L: %d J: %d T: %d S: %d Z: %d O: %d", I, L, J, T, S, Z, O);
 
+  refill_tetromino_bag();
   spawn_tetromino();
 
   // board[0][23] = true;
