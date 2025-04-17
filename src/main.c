@@ -112,7 +112,7 @@ bool fast_rotate = false;
 Tetromino tetromino;
 
 bool is_tetromino_at(int part_index, Vector2 index) {
-  for (size_t i = 0; i < 4; i++) {
+  for (int i = 0; i < 4; i++) {
     if (i == part_index)
       continue;
     if (Vector2Equals(tetromino.parts[i], index)) {
@@ -218,6 +218,36 @@ _no_rotation:
   board_add_tetromino();
 }
 
+void check_full_line(void) {
+  int lowest_y = 0;
+  int shift_amount = 0;
+  int y, x;
+  for (y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1; y > BOARD_HEIGHT_EXTRA; y--) {
+    for (x = 0; x < BOARD_WIDTH; x++) {
+      if (!board[x][y]) {
+        goto _out_loop;
+      }
+    }
+    if (y > lowest_y)
+      lowest_y = y;
+    // for (size_t x = 0; x < BOARD_WIDTH; x++) {
+    //   board[x][y] = false;
+    // }
+    shift_amount++;
+  _out_loop:
+  }
+
+  printf("lowest_y: %d shift_amount: %d\n", lowest_y, shift_amount);
+  if (lowest_y != 0) {
+    for (y = lowest_y; y >= BOARD_HEIGHT_EXTRA + shift_amount; y--) {
+      for (x = 0; x < BOARD_WIDTH; x++) {
+        assert(y - shift_amount > BOARD_HEIGHT_EXTRA - 1 && "You are stupid");
+        board[x][y] = board[x][y - shift_amount];
+      }
+    }
+  }
+}
+
 bool tetromino_grounded(void) {
   for (size_t i = 0; i < 4; i++) {
     Vector2 cell_below = {tetromino.parts[i].x, tetromino.parts[i].y + 1};
@@ -316,6 +346,8 @@ int main(void) {
       if (tetromino_grounded()) {
         // Spawn new one
         printf("Grounded! Type: %d\n", tetromino.type);
+
+        check_full_line();
         spawn_tetromino();
       }
       move_tetromino(Down);
