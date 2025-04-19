@@ -16,9 +16,11 @@
 #define BOARD_HEIGHT 20
 #define BOARD_HEIGHT_EXTRA 2
 #define CELL_WIDTH_RATIO 0.05
-#define TICK 5.8f
+#define TICK 0.8f
 #define FAST_TICK_HORIZONTAL .2f
 #define FAST_TICK_VERTICAL .1f
+
+#define CLEAR_LINE_POINTS 10
 
 #define TET_I_STATES 2
 #define TET_L_STATES 4
@@ -110,6 +112,8 @@ bool fast_shift_down = false;
 bool fast_rotate = false;
 
 Tetromino tetromino;
+
+size_t game_points = 0;
 
 bool is_tetromino_at(int part_index, Vector2 index) {
   for (int i = 0; i < 4; i++) {
@@ -218,7 +222,7 @@ _no_rotation:
   board_add_tetromino();
 }
 
-void check_full_line(void) {
+void clear_full_line(void) {
   int lowest_y = 0;
   int shift_amount = 0;
   int y, x;
@@ -246,6 +250,18 @@ void check_full_line(void) {
       }
     }
   }
+  game_points += shift_amount * CLEAR_LINE_POINTS;
+  printf("Game Points: %lld\n", game_points);
+}
+
+void game_over(void) {
+  game_points = 0;
+  for (size_t y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1;
+       y >= BOARD_HEIGHT_EXTRA; y--) {
+    for (size_t x = 0; x < BOARD_WIDTH; x++) {
+      board[x][y] = false;
+    }
+  }
 }
 
 bool tetromino_grounded(void) {
@@ -254,7 +270,6 @@ bool tetromino_grounded(void) {
     // On the ground
     if (!within_board(cell_below)) {
       // assert(false && "kill tetromino");
-      printf("Grounded out box\n");
       return true;
     }
 
@@ -262,7 +277,6 @@ bool tetromino_grounded(void) {
     if (!is_tetromino_at(i, cell_below) &&
         board[(int)cell_below.x][(int)cell_below.y]) {
       // assert(false && "kill tetromino");
-      printf("Grounded cell below at: %f %f\n", cell_below.x, cell_below.y);
       return true;
     }
   }
@@ -299,7 +313,6 @@ void spawn_tetromino(void) {
 int main(void) {
   InitWindow(800, 900, "tetris");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
-
   empty_cell_color = GetColor(0x1b4965FF);
   alive_cell_color = GetColor(0x5fa8d3FF);
   background_color = BLACK;
@@ -312,11 +325,6 @@ int main(void) {
   refill_tetromino_bag();
   spawn_tetromino();
 
-  // board[0][23] = true;
-  // board[1][23] = true;
-  // board[2][23] = true;
-  // board[3][23] = true;
-
   while (!WindowShouldClose()) {
     if (last_tick_time >= TICK) {
       last_tick_time = 0.0;
@@ -325,8 +333,6 @@ int main(void) {
 
     delta_time = GetFrameTime();
     last_tick_time += delta_time;
-
-    // printf("last_tick_time: %f\n", last_tick_time);
 
     BeginDrawing();
 
@@ -339,15 +345,18 @@ int main(void) {
     int y0 = screen_height - cell_width * BOARD_HEIGHT -
              cell_width * BOARD_HEIGHT_EXTRA;
 
-    // printf("x0 = %d\n", x0);
-    // printf("y0 = %d\n", y0);
-
     if (tick_time) {
       if (tetromino_grounded()) {
         // Spawn new one
         printf("Grounded! Type: %d\n", tetromino.type);
 
-        check_full_line();
+        for (size_t i = 0; i < BOARD_WIDTH; i++) {
+          if (board[i][BOARD_HEIGHT_EXTRA]) {
+            game_over();
+          }
+        }
+
+        clear_full_line();
         spawn_tetromino();
       }
       move_tetromino(Down);
