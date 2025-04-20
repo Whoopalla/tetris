@@ -8,9 +8,15 @@
 #include <string.h>
 #include <time.h>
 
+#if defined(PLATFORM_WEB)
+#include <emscripten/emscripten.h>
+#endif
+
 // TODO: Add window icon
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
+
+// TODO: BUG when the last line is filled it takes some time
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
@@ -114,6 +120,8 @@ bool fast_rotate = false;
 Tetromino tetromino;
 
 size_t game_points = 0;
+
+void UpdateDrawFrame(void);
 
 bool is_tetromino_at(int part_index, Vector2 index) {
   for (int i = 0; i < 4; i++) {
@@ -310,6 +318,113 @@ void spawn_tetromino(void) {
   tetromino = tetromino_bag[tetromino_bag_used++];
 }
 
+void UpdateDrawFrame() {
+  if (last_tick_time >= TICK) {
+    last_tick_time = 0.0;
+    tick_time = true;
+  }
+
+  delta_time = GetFrameTime();
+  last_tick_time += delta_time;
+
+  BeginDrawing();
+
+  screen_width = GetScreenWidth();
+  screen_height = GetScreenHeight();
+
+  int cell_width = screen_height * CELL_WIDTH_RATIO;
+
+  int x0 = (screen_width - cell_width * BOARD_WIDTH) / 2;
+  int y0 = screen_height - cell_width * BOARD_HEIGHT -
+           cell_width * BOARD_HEIGHT_EXTRA;
+
+  if (tick_time) {
+    if (tetromino_grounded()) {
+      // Spawn new one
+      printf("Grounded! Type: %d\n", tetromino.type);
+
+      for (size_t i = 0; i < BOARD_WIDTH; i++) {
+        if (board[i][BOARD_HEIGHT_EXTRA]) {
+          game_over();
+        }
+      }
+
+      clear_full_line();
+      spawn_tetromino();
+    }
+    move_tetromino(Down);
+    tick_time = false;
+  }
+
+  if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
+    last_horizontal_tick = 0;
+    move_tetromino(Left);
+  }
+  if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
+    last_horizontal_tick = 0;
+    move_tetromino(Right);
+  }
+  if (IsKeyPressed(KEY_R)) {
+    rotate_tetromino();
+  }
+
+  // Continuous press
+
+  // Both are directions pressed
+  if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) &&
+      (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))) {
+    last_horizontal_tick = 0;
+  }
+
+  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+    last_horizontal_tick += delta_time;
+
+    if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
+      last_horizontal_tick = 0;
+      move_tetromino(Left);
+    }
+  }
+
+  if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+    last_horizontal_tick += delta_time;
+
+    if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
+      last_horizontal_tick = 0;
+      move_tetromino(Right);
+    }
+  }
+
+  // Check grounded to not wait a whole tick for a new spawn
+  if (!tetromino_grounded() && (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))) {
+    last_tick_time += delta_time;
+
+    if (last_tick_time >= FAST_TICK_VERTICAL) {
+      last_tick_time = 0;
+      move_tetromino(Down);
+      if (tetromino_grounded()) {
+        last_tick_time = TICK - .1; // Couse new spawn
+      }
+    }
+  }
+
+  for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
+       y++) {
+    for (size_t x = 0; x < BOARD_WIDTH; x++) {
+      if (board[x][y]) {
+        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
+                      cell_width - 5,
+                      alive_cell_color); // - 5 maybe something else
+      } else {
+        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
+                      cell_width - 5,
+                      empty_cell_color); // - 5 maybe something else
+      }
+    }
+  }
+  ClearBackground(background_color);
+  EndDrawing();
+}
+
 int main(void) {
   InitWindow(800, 900, "tetris");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
@@ -325,112 +440,13 @@ int main(void) {
   refill_tetromino_bag();
   spawn_tetromino();
 
+#if defined(PLATFORM_WEB)
+  emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
+#else
   while (!WindowShouldClose()) {
-    if (last_tick_time >= TICK) {
-      last_tick_time = 0.0;
-      tick_time = true;
-    }
-
-    delta_time = GetFrameTime();
-    last_tick_time += delta_time;
-
-    BeginDrawing();
-
-    screen_width = GetScreenWidth();
-    screen_height = GetScreenHeight();
-
-    int cell_width = screen_height * CELL_WIDTH_RATIO;
-
-    int x0 = (screen_width - cell_width * BOARD_WIDTH) / 2;
-    int y0 = screen_height - cell_width * BOARD_HEIGHT -
-             cell_width * BOARD_HEIGHT_EXTRA;
-
-    if (tick_time) {
-      if (tetromino_grounded()) {
-        // Spawn new one
-        printf("Grounded! Type: %d\n", tetromino.type);
-
-        for (size_t i = 0; i < BOARD_WIDTH; i++) {
-          if (board[i][BOARD_HEIGHT_EXTRA]) {
-            game_over();
-          }
-        }
-
-        clear_full_line();
-        spawn_tetromino();
-      }
-      move_tetromino(Down);
-      tick_time = false;
-    }
-
-    if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
-      last_horizontal_tick = 0;
-      move_tetromino(Left);
-    }
-    if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
-      last_horizontal_tick = 0;
-      move_tetromino(Right);
-    }
-    if (IsKeyPressed(KEY_R)) {
-      rotate_tetromino();
-    }
-
-    // Continuous press
-
-    // Both are directions pressed
-    if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) &&
-        (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))) {
-      last_horizontal_tick = 0;
-    }
-
-    if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
-      last_horizontal_tick += delta_time;
-
-      if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
-        last_horizontal_tick = 0;
-        move_tetromino(Left);
-      }
-    }
-
-    if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
-      last_horizontal_tick += delta_time;
-
-      if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
-        last_horizontal_tick = 0;
-        move_tetromino(Right);
-      }
-    }
-
-    // Check grounded to not wait a whole tick for a new spawn
-    if (!tetromino_grounded() && (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))) {
-      last_tick_time += delta_time;
-
-      if (last_tick_time >= FAST_TICK_VERTICAL) {
-        last_tick_time = 0;
-        move_tetromino(Down);
-        if (tetromino_grounded()) {
-          last_tick_time = TICK - .1; // Couse new spawn
-        }
-      }
-    }
-
-    for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
-         y++) {
-      for (size_t x = 0; x < BOARD_WIDTH; x++) {
-        if (board[x][y]) {
-          DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
-                        cell_width - 5, cell_width - 5,
-                        alive_cell_color); // - 5 maybe something else
-        } else {
-          DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
-                        cell_width - 5, cell_width - 5,
-                        empty_cell_color); // - 5 maybe something else
-        }
-      }
-    }
-    ClearBackground(background_color);
-    EndDrawing();
+    UpdateDrawFrame();
   }
+#endif
   CloseWindow();
   return 0;
 }
