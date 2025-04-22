@@ -6,22 +6,32 @@
 #define BUILD_FOLDER "build/"
 #define SRC_FOLDER "src/"
 
+#define PATH_TO_EMSCRIPTEN_SDK "C:/emsdk/"
+
 #define PLATFORM "-DPLATFORM_DESKTOP"
 
-#ifdef _WIN32
+#if defined(_WIN32)
 #define STATIC_LIB_NAME "raylib.lib"
-#endif
-#ifdef __linux__
+#elif defined(__linux__)
 #define STATIC_LIB_NAME "libraylib.a"
+#else
+#error "Unsupported platform: STATIC_LIB_NAME not defined"
 #endif
 
 #define RELEASE_FLAG "-release"
 #define PLATFORM_FLAG_PREFIX "-DPLATFORM_"
 
+#define WEB_CC "emcc"
+#define DEFAULT_CC "cc"
+
+#define DESKTOP_FLAGS "-DSUPPORT_WINMM"
+#define WEB_FLAGS "-Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2"
+
 char *platforms[] = {"-DPLATFORM_DESKTOP", "-DPLATFORM_WEB"};
 char platform[30] = PLATFORM;
 
 bool release = false;
+bool web = false;
 
 int main(int argc, char **argv) {
   NOB_GO_REBUILD_URSELF(argc, argv);
@@ -37,6 +47,10 @@ int main(int argc, char **argv) {
         if (strcmp(platforms[p], argv[i]) == 0) {
           nob_log(NOB_INFO, "Selected Platform: %s\n", argv[i]);
           strcpy(platform, platforms[p]);
+          if (strcmp(platform, "-DPLATFORM_WEB") == 0) {
+            web = true;
+            nob_log(NOB_INFO, "Compiling for web");
+          }
         }
       }
       nob_log(NOB_INFO, "Default Platform: %s\n", PLATFORM);
@@ -58,21 +72,44 @@ int main(int argc, char **argv) {
       BUILD_FOLDER "rtextures.o", BUILD_FOLDER "rtext.o",
       BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o"};
 
+  if (web) {
+    // Setup emscripten environment
+#ifdef _WIN32
+    nob_cmd_append(&cmd, "cd", PATH_TO_EMSCRIPTEN_SDK);
+    if (!nob_cmd_run_sync_and_reset(&cmd))
+      return 1;
+    nob_cmd_append(&cmd, "./emcmdprompt.bat");
+    if (!nob_cmd_run_sync_and_reset(&cmd))
+      return 1;
+#endif
+#ifdef __linux__
+    nob_cmd_append(&cmd, "source", PATH_TO_EMSCRIPTEN_SDK "/emsdk_env.sh");
+#endif
+    if (!nob_cmd_run_sync_and_reset(&cmd))
+      return 1;
+  }
+
   if (!nob_file_exists("./build/raylib.lib") || release) {
     // Raylib
 
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
-      nob_cmd_append(&cmd, "cc", PLATFORM, "-DSUPPORT_WINMM",
+      nob_cmd_append(&cmd, web ? WEB_CC : DEFAULT_CC, PLATFORM,
+                     web ? WEB_FLAGS : DESKTOP_FLAGS,
                      "-I./third_party/raylib/src/", "-c", raylib_headers[i],
                      "-I./third_party/raylib/src/external/glfw/include/", "-o",
                      raylib_build_object_files[i]);
-      if (release)
+      if (release && !web)
         nob_cmd_append(&cmd, "-O3");
       if (!nob_cmd_run_sync_and_reset(&cmd))
         return 1;
     }
 
-    nob_cmd_append(&cmd, "ar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
+    if (web) {
+      nob_cmd_append(&cmd, "emar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
+    } else {
+      nob_cmd_append(&cmd, "ar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
+    }
+
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
       nob_cmd_append(&cmd, raylib_build_object_files[i]);
     }
@@ -82,18 +119,28 @@ int main(int argc, char **argv) {
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
       nob_cmd_append(&cmd, "rm");
       nob_cmd_append(&cmd, raylib_build_object_files[i]);
-      nob_cmd_run_sync_and_reset(&cmd);
+      if (!nob_cmd_run_sync_and_reset(&cmd))
+        return 1;
     }
   }
 
+  if (web) {
+    nob_cmd_append(&cmd, WEB_CC, "-o", BUILD_FOLDER "tetris.html",
+                   SRC_FOLDER "main.c", "-Os", "-Wall", "-s", "USE_GLFW3",
+                   "--shell-file", "./third_party/raylib/src/shell.html",
+                   platform);
+    if (!nob_cmd_run_sync(cmd))
+      return 1;
+    return 0;
+  }
   nob_cmd_append(&cmd, "cc", "-o", BUILD_FOLDER "tetris", SRC_FOLDER "main.c");
 
   if (!release) {
     nob_cmd_append(&cmd, "-g", "-ggdb", "-Wall", "-Wextra");
-  } else {
+  }
+  if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-
   nob_cmd_append(&cmd, "-I./third_party/raylib/src", "-L./build/", "-lraylib");
 #ifdef _WIN32
   nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
@@ -110,5 +157,6 @@ int main(int argc, char **argv) {
   // nob_cmd_render(cmd, &sb);
   if (!nob_cmd_run_sync(cmd))
     return 1;
+
   return 0;
 }
