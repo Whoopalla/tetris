@@ -27,7 +27,7 @@
 #define PLATFORM_FLAG_PREFIX "-DPLATFORM_"
 
 #define WEB_CC "emcc"
-#define DEFAULT_CC "cc"
+#define DEFAULT_CC "gcc"
 
 #define DESKTOP_FLAGS "-DSUPPORT_WINMM"
 #define WEB_FLAGS "-Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2"
