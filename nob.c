@@ -183,7 +183,7 @@ int main(int argc, char **argv) {
     //   return 1;
     return 0;
   }
-  nob_cmd_append(&cmd, "cc", "-o", BUILD_FOLDER "tetris", SRC_FOLDER "main.c");
+  nob_cmd_append(&cmd, DEFAULT_CC, "-o", BUILD_FOLDER "tetris", SRC_FOLDER "main.c");
 
   if (!release) {
     nob_cmd_append(&cmd, "-g", "-ggdb", "-Wall", "-Wextra");
