@@ -13,11 +13,14 @@
 #define PLATFORM "-DPLATFORM_DESKTOP"
 
 #if defined(_WIN32)
+
 #define STATIC_LIB_NAME "raylib.lib"
+#include <direct.h>
+#define getcwd _getcwd
+
 #elif defined(__linux__)
+#include <unistd.h>
 #define STATIC_LIB_NAME "libraylib.a"
-#else
-#error "Unsupported platform: STATIC_LIB_NAME not defined"
 #endif
 
 #define RELEASE_FLAG "-release"
@@ -41,8 +44,8 @@ bool web = false;
 int main(int argc, char **argv) {
   NOB_GO_REBUILD_URSELF(argc, argv);
 
-  if (_getcwd(working_dir, sizeof(working_dir)) == NULL) {
-    nob_log(NOB_INFO, "_getcwd()\n");
+  if (getcwd(working_dir, sizeof(working_dir)) == NULL) {
+    nob_log(NOB_INFO, "getcwd()\n");
     return 1;
   }
 
