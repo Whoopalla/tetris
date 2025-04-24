@@ -49,7 +49,7 @@ jobs:
       - name: Run build executable
         run: |
           chmod +x nob || true
-          ./build${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          ./nob${{ matrix.os == 'windows-latest' && '.exe' || '' }}
         shell: bash
         working-directory: ./
 
