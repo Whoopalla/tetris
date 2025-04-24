@@ -1,0 +1,79 @@
+name: C Raylib Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcc make libgl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev
+        shell: bash
+
+      - name: Install dependencies (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          brew install gcc
+        shell: bash
+
+      - name: Install dependencies (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          choco install mingw
+        shell: bash
+
+      - name: Compile build.c (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          gcc -o nob nob.c 
+        shell: bash
+        working-directory: ./
+
+      - name: Compile build.c (macOS)
+        if: matrix.os == 'macos-latest'
+        run: |
+          gcc -o nob nob.c
+        shell: bash
+        working-directory: ./
+
+      - name: Compile build.c (Windows)
+        if: matrix.os == 'windows-latest'
+        run: |
+          gcc -o nob.exe nob.c
+        shell: bash
+        working-directory: ./
+
+      - name: Run build executable
+        run: |
+          chmod +x nob || true
+          ./build${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+        shell: bash
+        working-directory: ./
+
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-build-${{ matrix.os }}
+          path: |
+            build
+            nob.exe
+            *.o
+            *.a
+            *.exe
+            mygame*
