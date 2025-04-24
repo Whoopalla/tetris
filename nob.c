@@ -1,4 +1,6 @@
 #include <stddef.h>
+#include <stdio.h>
+#include <stdlib.h>
 #define NOB_IMPLEMENTATION
 
 #include "nob.h"
@@ -6,7 +8,7 @@
 #define BUILD_FOLDER "build/"
 #define SRC_FOLDER "src/"
 
-#define PATH_TO_EMSCRIPTEN_SDK "C:/emsdk/"
+#define PATH_TO_EMSCRIPTEN_SDK "C:/emsdk"
 
 #define PLATFORM "-DPLATFORM_DESKTOP"
 
@@ -29,12 +31,20 @@
 
 char *platforms[] = {"-DPLATFORM_DESKTOP", "-DPLATFORM_WEB"};
 char platform[30] = PLATFORM;
+char working_dir[1024];
+Nob_String_Builder sb = {0};
+Nob_String_View sv = {0};
 
 bool release = false;
 bool web = false;
 
 int main(int argc, char **argv) {
   NOB_GO_REBUILD_URSELF(argc, argv);
+
+  if (_getcwd(working_dir, sizeof(working_dir)) == NULL) {
+    nob_log(NOB_INFO, "_getcwd()\n");
+    return 1;
+  }
 
   for (size_t i = 0; i < argc; i++) {
     if (strcmp(RELEASE_FLAG, argv[i]) == 0) {
@@ -62,6 +72,7 @@ int main(int argc, char **argv) {
   Nob_Cmd cmd = {0};
 
 #define RAYLIB_OBJ_COUNT 6
+#define RGLFW_INDEX 4
   char *raylib_headers[RAYLIB_OBJ_COUNT] = {
       "third_party/raylib/src/rcore.c",     "third_party/raylib/src/rshapes.c",
       "third_party/raylib/src/rtextures.c", "third_party/raylib/src/rtext.c",
@@ -72,51 +83,78 @@ int main(int argc, char **argv) {
       BUILD_FOLDER "rtextures.o", BUILD_FOLDER "rtext.o",
       BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o"};
 
-  if (web) {
-    // Setup emscripten environment
-#ifdef _WIN32
-    nob_cmd_append(&cmd, "cd", PATH_TO_EMSCRIPTEN_SDK);
-    if (!nob_cmd_run_sync_and_reset(&cmd))
-      return 1;
-    nob_cmd_append(&cmd, "./emcmdprompt.bat");
-    if (!nob_cmd_run_sync_and_reset(&cmd))
-      return 1;
-#endif
-#ifdef __linux__
-    nob_cmd_append(&cmd, "source", PATH_TO_EMSCRIPTEN_SDK "/emsdk_env.sh");
-#endif
-    if (!nob_cmd_run_sync_and_reset(&cmd))
-      return 1;
-  }
-
-  if (!nob_file_exists("./build/raylib.lib") || release) {
+  if (web || !nob_file_exists("./build/raylib.lib") || release) {
     // Raylib
+    nob_log(NOB_INFO, "Building raylib.lib");
 
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
-      nob_cmd_append(&cmd, web ? WEB_CC : DEFAULT_CC, PLATFORM,
-                     web ? WEB_FLAGS : DESKTOP_FLAGS,
+      if (web) {
+        // emcc provides its own iplementation?
+        if (i == RGLFW_INDEX)
+          continue;
+        nob_cmd_append(&cmd, WEB_CC, platform, "-I./third_party/raylib/src/",
+                       "-Os", "-DPLATFORM_WEB", "-DGRAPHICS_API_OPENGL_ES2",
+                       "-c", raylib_headers[i],
+                       "-I./third_party/raylib/src/external/glfw/include/",
+                       "-o", raylib_build_object_files[i]);
+        // For some reason nob doesn't see emcc
+
+        sb.count = 0;
+        nob_cmd_render(cmd, &sb);
+        nob_sb_append_null(&sb);
+        sv = nob_sb_to_sv(sb);
+        printf("System(%s)\n", sv.data);
+        if (system(sv.data) != 0) {
+          exit(1);
+        };
+        cmd.count = 0;
+        continue;
+      }
+
+      nob_cmd_append(&cmd, DEFAULT_CC, platform, "-DPLATFORM_DESKTOP",
                      "-I./third_party/raylib/src/", "-c", raylib_headers[i],
                      "-I./third_party/raylib/src/external/glfw/include/", "-o",
                      raylib_build_object_files[i]);
-      if (release && !web)
+      if (release)
         nob_cmd_append(&cmd, "-O3");
+
       if (!nob_cmd_run_sync_and_reset(&cmd))
         return 1;
     }
 
+    nob_log(NOB_INFO, "Linking .o's");
     if (web) {
+      cmd.count = 0;
       nob_cmd_append(&cmd, "emar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
     } else {
       nob_cmd_append(&cmd, "ar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
     }
 
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
+      if (web && i == RGLFW_INDEX)
+        continue;
       nob_cmd_append(&cmd, raylib_build_object_files[i]);
     }
-    if (!nob_cmd_run_sync_and_reset(&cmd))
-      return 1;
+
+    if (web) {
+      sb.count = 0;
+      nob_cmd_render(cmd, &sb);
+      nob_sb_append_null(&sb);
+      sv = nob_sb_to_sv(sb);
+      printf("System(%s)\n", sv.data);
+      if (system(sv.data) != 0) {
+        exit(1);
+      };
+      cmd.count = 0;
+      sb.count = 0;
+    } else {
+      if (!nob_cmd_run_sync_and_reset(&cmd))
+        return 1;
+    }
 
     for (size_t i = 0; i < RAYLIB_OBJ_COUNT; i++) {
+      if (web && i == RGLFW_INDEX)
+        continue;
       nob_cmd_append(&cmd, "rm");
       nob_cmd_append(&cmd, raylib_build_object_files[i]);
       if (!nob_cmd_run_sync_and_reset(&cmd))
@@ -124,13 +162,22 @@ int main(int argc, char **argv) {
     }
   }
 
+  nob_log(NOB_INFO, "Building the game");
   if (web) {
-    nob_cmd_append(&cmd, WEB_CC, "-o", BUILD_FOLDER "tetris.html",
-                   SRC_FOLDER "main.c", "-Os", "-Wall", "-s", "USE_GLFW3",
-                   "--shell-file", "./third_party/raylib/src/shell.html",
-                   platform);
-    if (!nob_cmd_run_sync(cmd))
-      return 1;
+    nob_cmd_append(
+        &cmd, WEB_CC, "-o", BUILD_FOLDER "tetris.html", SRC_FOLDER "main.c",
+        "-Os", "-Wall", BUILD_FOLDER "raylib.lib", "-s", "USE_GLFW=3", "-I",
+        "./third_party/raylib/src/", "-L", "./" BUILD_FOLDER "raylib.lib",
+        "--shell-file", "./third_party/raylib/src/shell.html", platform);
+    nob_cmd_render(cmd, &sb);
+    nob_sb_append_null(&sb);
+    sv = nob_sb_to_sv(sb);
+    printf("%s\n", sv.data);
+    if (system(sb.items) != 0) {
+      exit(1);
+    }
+    // if (!nob_cmd_run_sync_and_reset(&cmd))
+    //   return 1;
     return 0;
   }
   nob_cmd_append(&cmd, "cc", "-o", BUILD_FOLDER "tetris", SRC_FOLDER "main.c");

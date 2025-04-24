@@ -428,6 +428,9 @@ void UpdateDrawFrame() {
 int main(void) {
   InitWindow(800, 900, "tetris");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
+#ifdef __EMSCRIPTEN__
+  SetWindowState(FLAG_WINDOW_MAXIMIZED);
+#endif
   empty_cell_color = GetColor(0x1b4965FF);
   alive_cell_color = GetColor(0x5fa8d3FF);
   background_color = BLACK;
