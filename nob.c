@@ -196,7 +196,7 @@ int main(int argc, char **argv) {
   nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
 #endif
 #ifdef __linux__
-  nob_cmd_append($cmd, "-lGL",
+  nob_cmd_append(&cmd, "-lGL",
                  "-ldl"
                  "-lpthread"
                  "-lX11");
