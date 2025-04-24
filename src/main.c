@@ -18,6 +18,7 @@
 
 // TODO: BUG when the last line is filled it takes some time
 
+// Testing CI
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
 #define BOARD_HEIGHT_EXTRA 2
