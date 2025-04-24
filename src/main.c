@@ -53,13 +53,13 @@ typedef enum {
 
 int tetromino_types[] = {I, L, J, T, S, Z, O};
 
-int tet_state_count[O + 1] =
-    (int[]){[I] = TET_I_STATES, [L] = TET_L_STATES, [J] = TET_J_STATES,
-            [T] = TET_T_STATES, [S] = TET_S_STATES, [Z] = TET_Z_STATES,
-            [O] = TET_O_STATES};
+int tet_state_count[O + 1] = {
+    [I] = TET_I_STATES, [L] = TET_L_STATES, [J] = TET_J_STATES,
+    [T] = TET_T_STATES, [S] = TET_S_STATES, [Z] = TET_Z_STATES,
+    [O] = TET_O_STATES};
 
 // TODO: make them all horizontal so that they take only 2 vertical cells
-Parts tet_states[O + 1] = (Parts[]){
+Parts tet_states[O + 1] = {
     (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){3, 0}, // I
     (Vector2){1, -1}, (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2},
 
