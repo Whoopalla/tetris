@@ -74,6 +74,9 @@ int main(int argc, char **argv) {
 
   Nob_Cmd cmd = {0};
 
+	// TODO: Remove -console from -release
+	// TODO: Remove nob.exe from workflows build results
+
 #define RAYLIB_OBJ_COUNT 6
 #define RGLFW_INDEX 4
   char *raylib_headers[RAYLIB_OBJ_COUNT] = {

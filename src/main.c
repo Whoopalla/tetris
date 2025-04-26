@@ -16,7 +16,7 @@
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
 
-// TODO: BUG when the last line is filled it takes some time
+// TODO: Random init positions
 
 // Testing ci
 #define BOARD_WIDTH 10
@@ -24,8 +24,8 @@
 #define BOARD_HEIGHT_EXTRA 2
 #define CELL_WIDTH_RATIO 0.05
 #define TICK 0.8f
-#define FAST_TICK_HORIZONTAL .2f
-#define FAST_TICK_VERTICAL .1f
+#define FAST_TICK_HORIZONTAL .1f
+#define FAST_TICK_VERTICAL 15.0f
 
 #define CLEAR_LINE_POINTS 10
 
@@ -108,6 +108,7 @@ Color background_color;
 float last_tick_time;
 float delta_time;
 bool tick_time;
+bool clear_time;
 
 float last_horizontal_tick;
 bool horizontal_move = false;
@@ -259,6 +260,7 @@ void clear_full_line(void) {
       }
     }
   }
+  clear_time = true;
   game_points += shift_amount * CLEAR_LINE_POINTS;
   printf("Game Points: %lld\n", game_points);
 }
@@ -328,8 +330,6 @@ void UpdateDrawFrame() {
   delta_time = GetFrameTime();
   last_tick_time += delta_time;
 
-  BeginDrawing();
-
   screen_width = GetScreenWidth();
   screen_height = GetScreenHeight();
 
@@ -355,6 +355,7 @@ void UpdateDrawFrame() {
     }
     move_tetromino(Down);
     tick_time = false;
+    goto _draw;
   }
 
   if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
@@ -365,7 +366,7 @@ void UpdateDrawFrame() {
     last_horizontal_tick = 0;
     move_tetromino(Right);
   }
-  if (IsKeyPressed(KEY_R)) {
+  if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP)) {
     rotate_tetromino();
   }
 
@@ -395,19 +396,12 @@ void UpdateDrawFrame() {
     }
   }
 
-  // Check grounded to not wait a whole tick for a new spawn
-  if (!tetromino_grounded() && (IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))) {
-    last_tick_time += delta_time;
-
-    if (last_tick_time >= FAST_TICK_VERTICAL) {
-      last_tick_time = 0;
-      move_tetromino(Down);
-      if (tetromino_grounded()) {
-        last_tick_time = TICK - .1; // Couse new spawn
-      }
-    }
+  if ((IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))) {
+    last_tick_time += FAST_TICK_VERTICAL * delta_time;
   }
 
+_draw:
+  BeginDrawing();
   for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
        y++) {
     for (size_t x = 0; x < BOARD_WIDTH; x++) {
