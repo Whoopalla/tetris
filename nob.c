@@ -86,7 +86,7 @@ int main(int argc, char **argv) {
       BUILD_FOLDER "rtextures.o", BUILD_FOLDER "rtext.o",
       BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o"};
 
-  if (web || !nob_file_exists("./build/raylib.lib") || release) {
+  if (web || !nob_file_exists("./build/" STATIC_LIB_NAME) || release) {
     // Raylib
     nob_log(NOB_INFO, "Building raylib.lib");
 
@@ -114,10 +114,14 @@ int main(int argc, char **argv) {
         continue;
       }
 
-      nob_cmd_append(&cmd, DEFAULT_CC, platform, "-DPLATFORM_DESKTOP",
-                     "-I./third_party/raylib/src/", "-c", raylib_headers[i],
-                     "-I./third_party/raylib/src/external/glfw/include/", "-o",
+      nob_cmd_append(&cmd, DEFAULT_CC, platform, "-I",
+                     "./third_party/raylib/src/", "-c", raylib_headers[i], "-I",
+                     "./third_party/raylib/src/external/glfw/include/", "-o",
                      raylib_build_object_files[i]);
+
+#ifdef __linux__
+      nob_cmd_append(&cmd, "-D_GLFW_X11");
+#endif
       if (release)
         nob_cmd_append(&cmd, "-O3");
 
@@ -192,18 +196,17 @@ int main(int argc, char **argv) {
   if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-  nob_cmd_append(&cmd, "-I./third_party/raylib/src", "-L./build/", "-lraylib");
+  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", "./build/", "-lraylib");
 #ifdef _WIN32
   nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
 #endif
 #ifdef __linux__
-  nob_cmd_append(&cmd, "-lGL",
-                 "-ldl"
-                 "-lpthread"
-                 "-lX11");
+  nob_cmd_append(&cmd, "-lGL", "-ldl", "-lpthread", "-lX11", "-lm");
 #endif
 
+#ifdef _WIN32
   nob_cmd_append(&cmd, "-static");
+#endif
 
   // nob_cmd_render(cmd, &sb);
   if (!nob_cmd_run_sync(cmd))
