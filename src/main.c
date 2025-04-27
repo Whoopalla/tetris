@@ -55,38 +55,42 @@ typedef enum {
 
 int tetromino_types[] = {I, L, J, T, S, Z, O};
 
-int tet_state_count[O + 1] = {
+int tet_max_widths[] = {
+    [I] = 4, [L] = 3, [J] = 3, [T] = 3, [S] = 3, [Z] = 3, [O] = 2};
+
+int tet_state_count[] = {
     [I] = TET_I_STATES, [L] = TET_L_STATES, [J] = TET_J_STATES,
     [T] = TET_T_STATES, [S] = TET_S_STATES, [Z] = TET_Z_STATES,
     [O] = TET_O_STATES};
 
+#define TET_START_OFFSET BOARD_WIDTH / 2.0f
 // TODO: make them all horizontal so that they take only 2 vertical cells
 Parts tet_states[O + 1] = {
-    (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){3, 0}, // I
-    (Vector2){1, -1}, (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2},
+    (Vector2){0, 0},  (Vector2){1, 0}, (Vector2){2, 0}, (Vector2){3, 0}, // I
+    (Vector2){1, -1}, (Vector2){1, 0}, (Vector2){1, 1}, (Vector2){1, 2},
 
-    (Vector2){0, 0},  (Vector2){0, 1},  (Vector2){0, 2}, (Vector2){1, 2}, // L
-    (Vector2){-1, 1}, (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){1, 0},
-    (Vector2){-1, 0}, (Vector2){0, 0},  (Vector2){0, 1}, (Vector2){0, 2},
-    (Vector2){-1, 2}, (Vector2){-1, 1}, (Vector2){0, 1}, (Vector2){1, 1},
+    (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){2, 1}, (Vector2){2, 0},
+    (Vector2){0, 0},  (Vector2){1, 0}, (Vector2){1, 1}, (Vector2){1, 2},
+    (Vector2){0, 2},  (Vector2){0, 1}, (Vector2){1, 1}, (Vector2){2, 1},
+    (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2}, (Vector2){2, 2}, // L
 
-    (Vector2){0, 0},  (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){2, 1}, // J
-    (Vector2){1, 0},  (Vector2){1, 1},  (Vector2){1, 2}, (Vector2){0, 2},
-    (Vector2){0, 1},  (Vector2){1, 1},  (Vector2){2, 1}, (Vector2){2, 2},
-    (Vector2){1, 0},  (Vector2){2, 0},  (Vector2){1, 1}, (Vector2){1, 2},
+    (Vector2){0, 0},  (Vector2){0, 1}, (Vector2){1, 1}, (Vector2){2, 1}, // J
+    (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2}, (Vector2){0, 2},
+    (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){2, 1}, (Vector2){2, 2},
+    (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){1, 1}, (Vector2){1, 2},
 
-    (Vector2){0, 1},  (Vector2){1, 1},  (Vector2){2, 1}, (Vector2){1, 2}, // T
-    (Vector2){1, 0},  (Vector2){1, 1},  (Vector2){1, 2}, (Vector2){2, 1},
-    (Vector2){1, 0},  (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){2, 1},
-    (Vector2){1, 0},  (Vector2){1, 1},  (Vector2){1, 2}, (Vector2){0, 1},
+    (Vector2){0, 1},  (Vector2){1, 1}, (Vector2){2, 1}, (Vector2){1, 2}, // T
+    (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2}, (Vector2){2, 1},
+    (Vector2){1, 0},  (Vector2){0, 1}, (Vector2){1, 1}, (Vector2){2, 1},
+    (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){1, 2}, (Vector2){0, 1},
 
-    (Vector2){1, 0},  (Vector2){2, 0},  (Vector2){1, 1}, (Vector2){0, 1}, // S
-    (Vector2){1, -1}, (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){2, 1},
+    (Vector2){1, 0},  (Vector2){2, 0}, (Vector2){1, 1}, (Vector2){0, 1}, // S
+    (Vector2){1, -1}, (Vector2){1, 0}, (Vector2){2, 0}, (Vector2){2, 1},
 
-    (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){2, 1}, // Z
-    (Vector2){2, -1}, (Vector2){1, 0},  (Vector2){1, 1}, (Vector2){2, 0},
+    (Vector2){0, 0},  (Vector2){1, 0}, (Vector2){1, 1}, (Vector2){2, 1}, // Z
+    (Vector2){2, -1}, (Vector2){1, 0}, (Vector2){1, 1}, (Vector2){2, 0},
 
-    (Vector2){0, 0},  (Vector2){1, 0},  (Vector2){0, 1}, (Vector2){1, 1}, // O
+    (Vector2){0, 0},  (Vector2){1, 0}, (Vector2){0, 1}, (Vector2){1, 1}, // O
 };
 
 typedef struct {
@@ -379,6 +383,11 @@ void spawn_tetromino(void) {
     refill_tetromino_bag();
   }
   tetromino = tetromino_bag[tetromino_bag_used++];
+  for (size_t i = 0; i < 4; i++) {
+    tetromino.pos.x = TET_START_OFFSET - tet_max_widths[tetromino.type] / 2.0f;
+    tetromino.parts[i].x +=
+        TET_START_OFFSET - tet_max_widths[tetromino.type] / 2.0f;
+  }
 }
 
 void UpdateDrawFrame() {
