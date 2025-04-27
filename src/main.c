@@ -28,6 +28,8 @@
 #define FAST_TICK_VERTICAL 15.0f
 
 #define CLEAR_LINE_POINTS 10
+#define CLEAR_ANIMATION_DURATION .3f
+#define CLEAR_ANIMATION_SWITCH_DURATION CLEAR_ANIMATION_DURATION / 3.0f
 
 #define TET_I_STATES 2
 #define TET_L_STATES 4
@@ -108,7 +110,12 @@ Color background_color;
 float last_tick_time;
 float delta_time;
 bool tick_time;
-bool clear_time;
+
+bool clear_animation = false;
+int clear_lowest_y;
+int clear_shift_amount;
+float clear_animation_time = 0;
+float clear_animation_switch_time = 0;
 
 float last_horizontal_tick;
 bool horizontal_move = false;
@@ -124,6 +131,16 @@ Tetromino tetromino;
 size_t game_points = 0;
 
 void UpdateDrawFrame(void);
+
+void dump_board(void) {
+  printf("BOARD DUMP\n");
+  for (int y = 0; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA; y++) {
+    for (int x = 0; x < BOARD_WIDTH; x++) {
+      printf("%s", board[x][y] ? "[*]" : "[ ]");
+    }
+    printf("\n");
+  }
+}
 
 bool is_tetromino_at(int part_index, Vector2 index) {
   for (int i = 0; i < 4; i++) {
@@ -213,11 +230,9 @@ void rotate_tetromino(void) {
   for (size_t i = 0; i < 4; i++) {
     Vector2 new_part_pos =
         Vector2Add(tet_states[tetromino.type + new_state][i], tetromino.pos);
-    printf("new_part_pos: %f %f\n", new_part_pos.x, new_part_pos.y);
-    printf("tetromino.pos: %f %f\n", tetromino.pos.x, tetromino.pos.x);
     if (!within_board(new_part_pos) ||
         board[(int)new_part_pos.x][(int)new_part_pos.y]) {
-      printf("No rotation!\n");
+      // printf("No rotation!\n");
       goto _no_rotation;
     }
   }
@@ -232,9 +247,9 @@ _no_rotation:
   board_add_tetromino();
 }
 
-void clear_full_line(void) {
-  int lowest_y = 0;
-  int shift_amount = 0;
+bool full_lines(void) {
+  clear_lowest_y = 0;
+  clear_shift_amount = 0;
   int y, x;
   for (y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1; y > BOARD_HEIGHT_EXTRA; y--) {
     for (x = 0; x < BOARD_WIDTH; x++) {
@@ -242,27 +257,72 @@ void clear_full_line(void) {
         goto _out_loop;
       }
     }
-    if (y > lowest_y)
-      lowest_y = y;
-    // for (size_t x = 0; x < BOARD_WIDTH; x++) {
-    //   board[x][y] = false;
-    // }
-    shift_amount++;
+    if (y > clear_lowest_y)
+      clear_lowest_y = y;
+    clear_shift_amount++;
   _out_loop:
   }
+  clear_animation = clear_lowest_y;
+  return clear_lowest_y != 0;
+}
 
-  printf("lowest_y: %d shift_amount: %d\n", lowest_y, shift_amount);
-  if (lowest_y != 0) {
-    for (y = lowest_y; y >= BOARD_HEIGHT_EXTRA + shift_amount; y--) {
+void clear_full_lines(void) {
+  printf("clear_lowest_y: %d clear_shift_amount: %d\n", clear_lowest_y,
+         clear_shift_amount);
+  // dump_board();
+  int x, y;
+  if (clear_lowest_y != 0) {
+    for (y = clear_lowest_y; y >= BOARD_HEIGHT_EXTRA + clear_shift_amount;
+         y--) {
       for (x = 0; x < BOARD_WIDTH; x++) {
-        assert(y - shift_amount > BOARD_HEIGHT_EXTRA - 1 && "You are stupid");
-        board[x][y] = board[x][y - shift_amount];
+        assert(y - clear_shift_amount > BOARD_HEIGHT_EXTRA - 1 &&
+               "You are stupid");
+        board[x][y] = board[x][y - clear_shift_amount];
       }
     }
   }
-  clear_time = true;
-  game_points += shift_amount * CLEAR_LINE_POINTS;
+  // dump_board();
+  clear_lowest_y = 0;
+  clear_shift_amount = 0;
+  game_points += clear_shift_amount * CLEAR_LINE_POINTS;
   printf("Game Points: %lld\n", game_points);
+}
+
+bool clear_animation_do(void) {
+  int x, y;
+  clear_animation_time += delta_time;
+  clear_animation_switch_time += delta_time;
+
+  if (clear_animation_time >= CLEAR_ANIMATION_DURATION) {
+    printf("Animating clear is DONE\n");
+    clear_animation = false;
+    clear_animation_time = 0.0;
+    clear_animation_switch_time = 0.0;
+
+    clear_full_lines();
+    return true;
+  }
+
+  if (clear_lowest_y != 0) {
+    for (y = clear_lowest_y; y > clear_lowest_y - clear_shift_amount; y--) {
+      for (x = 0; x < BOARD_WIDTH; x++) {
+        // printf("clear_animation_switch_time: %f\n",
+        //        clear_animation_switch_time);
+        // printf("Clear anim setting: %s\n",
+        //        clear_animation_switch_time >= CLEAR_ANIMATION_SWITCH_DURATION
+        //            ? "true"
+        //            : "false");
+        board[x][y] =
+            clear_animation_switch_time >= CLEAR_ANIMATION_SWITCH_DURATION
+                ? true
+                : false;
+      }
+    }
+    if (clear_animation_switch_time >= CLEAR_ANIMATION_SWITCH_DURATION) {
+      clear_animation_switch_time = 0.0f;
+    }
+  }
+  return false;
 }
 
 void game_over(void) {
@@ -339,6 +399,11 @@ void UpdateDrawFrame() {
   int y0 = screen_height - cell_width * BOARD_HEIGHT -
            cell_width * BOARD_HEIGHT_EXTRA;
 
+  if (clear_animation) {
+    clear_animation_do();
+    goto _draw;
+  }
+
   if (tick_time) {
     if (tetromino_grounded()) {
       // Spawn new one
@@ -350,12 +415,14 @@ void UpdateDrawFrame() {
         }
       }
 
-      clear_full_line();
-      spawn_tetromino();
+      if (!clear_animation && !full_lines()) {
+        spawn_tetromino();
+      }
+    } else {
+      move_tetromino(Down);
+      tick_time = false;
+      goto _draw;
     }
-    move_tetromino(Down);
-    tick_time = false;
-    goto _draw;
   }
 
   if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
@@ -372,7 +439,7 @@ void UpdateDrawFrame() {
 
   // Continuous press
 
-  // Both are directions pressed
+  // Both directions are pressed
   if ((IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) &&
       (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT))) {
     last_horizontal_tick = 0;
@@ -402,6 +469,7 @@ void UpdateDrawFrame() {
 
 _draw:
   BeginDrawing();
+  ClearBackground(background_color);
   for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
        y++) {
     for (size_t x = 0; x < BOARD_WIDTH; x++) {
@@ -416,7 +484,6 @@ _draw:
       }
     }
   }
-  ClearBackground(background_color);
   EndDrawing();
 }
 
