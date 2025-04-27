@@ -16,8 +16,6 @@
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
 
-// TODO: Random init positions
-
 // Testing ci
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20

@@ -35,7 +35,7 @@ jobs:
       - name: Run build executable
         run: |
           chmod +x nob || true
-          ./nob${{ matrix.os == 'windows-latest' && '.exe' || '' }}
+          ./nob${{ matrix.os == 'windows-latest' && '.exe' || '' }} -release
         shell: bash
         working-directory: ./
 
@@ -45,7 +45,6 @@ jobs:
           name: project-build-${{ matrix.os }}
           path: |
             build
-            nob.exe
             *.o
             *.a
             *.exe
