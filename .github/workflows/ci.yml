@@ -13,7 +13,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [windows-latest]
+        os: [windows-latest, ubuntu-latest]
 
     steps:
       - name: Checkout code
@@ -25,10 +25,24 @@ jobs:
           choco install mingw
         shell: bash
 
+      - name: Install dependencies (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+        sudo apt-get update
+        sudo apt-get install -y gcc make libgl1-mesa-dev libx11-dev libxcursor-dev libxrandr-dev libxinerama-dev libxi-dev
+        shell: bash
+
       - name: Compile build.c (Windows)
         if: matrix.os == 'windows-latest'
         run: |
           gcc -o nob.exe nob.c
+        shell: bash
+        working-directory: ./
+
+      - name: Compile build.c (Ubuntu)
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          gcc -o nob nob.c
         shell: bash
         working-directory: ./
 
