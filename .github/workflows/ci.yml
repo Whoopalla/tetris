@@ -71,6 +71,7 @@ jobs:
       - name: Run build executable (WebAssembly, Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         run: |
+          source ./emsdk/emsdk_env.sh
           ./nob -DPLATFORM_WEB
         shell: bash
         working-directory: ./ 
