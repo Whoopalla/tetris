@@ -173,7 +173,7 @@ int main(int argc, char **argv) {
   if (web) {
     nob_cmd_append(
         &cmd, WEB_CC, "-o", BUILD_FOLDER "tetris.html", SRC_FOLDER "main.c",
-        "-Os", "-Wall", BUILD_FOLDER "raylib.lib", "-s", "USE_GLFW=3", "-I",
+        "-Os", "-Wall", BUILD_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
         "./third_party/raylib/src/", "-L", "./" BUILD_FOLDER "raylib.lib",
         "--shell-file", "./third_party/raylib/src/shell.html", platform);
     nob_cmd_render(cmd, &sb);
@@ -196,7 +196,8 @@ int main(int argc, char **argv) {
   if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", "./build/", "-lraylib");
+  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", "./build/",
+                 "-lraylib");
 #ifdef _WIN32
   nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
 #endif
