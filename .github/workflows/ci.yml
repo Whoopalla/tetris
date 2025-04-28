@@ -126,3 +126,27 @@ jobs:
             windows-artifacts/mygame.exe
             ubuntu-artifacts/mygame
           name: Release ${{ github.ref_name }} # e.g., Release v1.0.0
+
+  deploy-gh-pages:
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/master' # Deploy only on push to master
+    permissions:
+      contents: write # Required to push to gh-pages branch
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download Ubuntu artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: project-build-ubuntu-latest
+          path: artifacts
+
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./artifacts/build/ # Adjust this path to where your WebAssembly files are located
+          destination_dir: . # Root of gh-pages branch
