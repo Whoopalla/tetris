@@ -82,8 +82,6 @@ jobs:
           name: project-build-${{ matrix.os }}
           path: |
             build
-            *.o
-            *.a
             *.exe
             mygame*
             *.html
