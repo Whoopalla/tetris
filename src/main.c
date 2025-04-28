@@ -15,6 +15,10 @@
 // TODO: Add window icon
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
+//
+// TODO: Score
+// TODO: Gestures recognition
+// TODO: Game over animation?Жц
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
@@ -107,6 +111,12 @@ static int screen_height;
 Color empty_cell_color;
 Color alive_cell_color;
 Color background_color;
+
+#define TOUCH_FAST_DOWN_W_HEIGHT_RATIO 0.2f
+#define MAX_TOUCH_COUNT 2
+Vector2 touch_pos[2];
+int gesture;
+int touch_points_count;
 
 float last_tick_time;
 float delta_time;
@@ -393,6 +403,11 @@ void UpdateDrawFrame() {
     tick_time = true;
   }
 
+  gesture = GetGestureDetected();
+  touch_pos[0] = GetTouchPosition(0);
+  touch_pos[1] = GetTouchPosition(1);
+  touch_points_count = GetTouchPointCount();
+
   delta_time = GetFrameTime();
   last_tick_time += delta_time;
 
@@ -431,15 +446,18 @@ void UpdateDrawFrame() {
     }
   }
 
-  if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT)) {
+  if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT) ||
+      (gesture == GESTURE_TAP && touch_pos[0].x < screen_width / 2.0f)) {
     last_horizontal_tick = 0;
     move_tetromino(Left);
   }
-  if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT)) {
+  if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT) ||
+      (gesture == GESTURE_TAP && touch_pos[0].x >= screen_width / 2.0f)) {
     last_horizontal_tick = 0;
     move_tetromino(Right);
   }
-  if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP)) {
+  if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP) ||
+      (gesture == GESTURE_SWIPE_UP)) {
     rotate_tetromino();
   }
 
@@ -451,7 +469,8 @@ void UpdateDrawFrame() {
     last_horizontal_tick = 0;
   }
 
-  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
+  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT) ||
+      (gesture == GESTURE_HOLD && touch_pos[0].x < screen_width / 2.0f)) {
     last_horizontal_tick += delta_time;
 
     if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
@@ -460,7 +479,8 @@ void UpdateDrawFrame() {
     }
   }
 
-  if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
+  if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT) ||
+      (gesture == GESTURE_HOLD && touch_pos[0].x >= screen_width / 2.0f)) {
     last_horizontal_tick += delta_time;
 
     if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
@@ -469,7 +489,9 @@ void UpdateDrawFrame() {
     }
   }
 
-  if ((IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN))) {
+  if ((IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) ||
+      (gesture == GESTURE_HOLD &&
+       touch_pos[0].y >= screen_width * TOUCH_FAST_DOWN_W_HEIGHT_RATIO)) {
     last_tick_time += FAST_TICK_VERTICAL * delta_time;
   }
 
@@ -496,9 +518,13 @@ _draw:
 int main(void) {
   InitWindow(800, 900, "tetris");
   SetWindowState(FLAG_WINDOW_RESIZABLE);
+
 #ifdef __EMSCRIPTEN__
   SetWindowState(FLAG_WINDOW_MAXIMIZED);
 #endif
+
+  SetGesturesEnabled(GESTURE_TAP | GESTURE_HOLD | GESTURE_SWIPE_UP);
+
   empty_cell_color = GetColor(0x1b4965FF);
   alive_cell_color = GetColor(0x5fa8d3FF);
   background_color = BLACK;
@@ -514,6 +540,7 @@ int main(void) {
 #if defined(PLATFORM_WEB)
   emscripten_set_main_loop(UpdateDrawFrame, 0, 1);
 #else
+
   while (!WindowShouldClose()) {
     UpdateDrawFrame();
   }
