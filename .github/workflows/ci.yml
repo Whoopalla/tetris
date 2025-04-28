@@ -42,6 +42,7 @@ jobs:
           ./emsdk install latest
           ./emsdk activate latest
           # Add Emscripten paths to PATH for subsequent steps
+          source ./emsdk_env.sh
           echo "/home/runner/work/${{ github.repository }}/emsdk" >> $GITHUB_PATH
           echo "/home/runner/work/${{ github.repository }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
           echo "/home/runner/work/${{ github.repository }}/emsdk/node/20.18.0_64bit/bin" >> $GITHUB_PATH
@@ -63,7 +64,6 @@ jobs:
 
       - name: Run build executable (Native)
         run: |
-          chmod +x nob || true
           ./nob${{ matrix.os == 'windows-latest' && '.exe' || '' }} -release
         shell: bash
         working-directory: ./
@@ -71,7 +71,6 @@ jobs:
       - name: Run build executable (WebAssembly, Ubuntu only)
         if: matrix.os == 'ubuntu-latest'
         run: |
-          chmod +x nob
           ./nob -DPLATFORM_WEB
         shell: bash
         working-directory: ./ 
