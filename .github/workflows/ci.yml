@@ -41,7 +41,10 @@ jobs:
           cd emsdk
           ./emsdk install latest
           ./emsdk activate latest
-          source ./emsdk_env.sh
+          # Add Emscripten paths to PATH for subsequent steps
+          echo "/home/runner/work/${{ github.repository }}/emsdk" >> $GITHUB_PATH
+          echo "/home/runner/work/${{ github.repository }}/emsdk/upstream/emscripten" >> $GITHUB_PATH
+          echo "/home/runner/work/${{ github.repository }}/emsdk/node/20.18.0_64bit/bin" >> $GITHUB_PATH
         shell: bash
 
       - name: Compile build.c (Windows)
