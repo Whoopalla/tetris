@@ -171,7 +171,7 @@ int main(int argc, char **argv) {
 
   nob_log(NOB_INFO, "Building the game");
   if (web) {
-    nob_cmd_append(&cmd, WEB_CC, "-o", BUILD_FOLDER "tetris.html",
+    nob_cmd_append(&cmd, WEB_CC, "-o", BUILD_FOLDER "index.html",
                    SRC_FOLDER "main.c", "-Os", "-Wall",
                    BUILD_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
                    "./third_party/raylib/src/", "--shell-file", "./shell.html",
