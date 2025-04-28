@@ -69,7 +69,7 @@ jobs:
         if: matrix.os == 'ubuntu-latest'
         run: |
           chmod +x nob
-          ./nob -web
+          ./nob -DPLATFORM_WEB
         shell: bash
         working-directory: ./ 
 
