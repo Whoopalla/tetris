@@ -6,14 +6,12 @@
 #include "nob.h"
 
 #define BUILD_FOLDER "build/"
+#define WEB_FOLDER BUILD_FOLDER "web/"
 #define SRC_FOLDER "src/"
-
 #define PATH_TO_EMSCRIPTEN_SDK "C:/emsdk"
-
 #define PLATFORM "-DPLATFORM_DESKTOP"
 
 #if defined(_WIN32)
-
 #define STATIC_LIB_NAME "raylib.lib"
 #include <direct.h>
 #define getcwd _getcwd
@@ -25,12 +23,12 @@
 
 #define RELEASE_FLAG "-release"
 #define PLATFORM_FLAG_PREFIX "-DPLATFORM_"
-
 #define WEB_CC "emcc"
 #define DEFAULT_CC "gcc"
-
 #define DESKTOP_FLAGS "-DSUPPORT_WINMM"
 #define WEB_FLAGS "-Os -DPLATFORM_WEB -DGRAPHICS_API_OPENGL_ES2"
+
+// TODO: add web folder
 
 char *platforms[] = {"-DPLATFORM_DESKTOP", "-DPLATFORM_WEB"};
 char platform[30] = PLATFORM;
@@ -63,6 +61,7 @@ int main(int argc, char **argv) {
           if (strcmp(platform, "-DPLATFORM_WEB") == 0) {
             web = true;
             nob_log(NOB_INFO, "Compiling for web");
+            nob_mkdir_if_not_exists(WEB_FOLDER);
           }
         }
       }
@@ -74,19 +73,23 @@ int main(int argc, char **argv) {
 
   Nob_Cmd cmd = {0};
 
-#define RAYLIB_OBJ_COUNT 6
 #define RGLFW_INDEX 4
-  char *raylib_headers[RAYLIB_OBJ_COUNT] = {
+  char *raylib_headers[] = {
       "third_party/raylib/src/rcore.c",     "third_party/raylib/src/rshapes.c",
       "third_party/raylib/src/rtextures.c", "third_party/raylib/src/rtext.c",
-      "third_party/raylib/src/rglfw.c",     "third_party/raylib/src/utils.c"};
+      "third_party/raylib/src/rglfw.c",     "third_party/raylib/src/utils.c",
+      "third_party/raylib/src/raudio.c"};
 
-  char *raylib_build_object_files[RAYLIB_OBJ_COUNT] = {
+  char *raylib_build_object_files[] = {
       BUILD_FOLDER "rcore.o",     BUILD_FOLDER "rshapes.o",
       BUILD_FOLDER "rtextures.o", BUILD_FOLDER "rtext.o",
-      BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o"};
+      BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o",
+      BUILD_FOLDER "raudio.c"};
 
-  if (web || !nob_file_exists("./build/" STATIC_LIB_NAME) || release) {
+#define RAYLIB_OBJ_COUNT sizeof(raylib_headers) / sizeof(char *)
+
+  if (release || (web && !nob_file_exists(WEB_FOLDER STATIC_LIB_NAME)) ||
+      (!web && !nob_file_exists(BUILD_FOLDER STATIC_LIB_NAME))) {
     // Raylib
     nob_log(NOB_INFO, "Building raylib.lib");
 
@@ -132,7 +135,7 @@ int main(int argc, char **argv) {
     nob_log(NOB_INFO, "Linking .o's");
     if (web) {
       cmd.count = 0;
-      nob_cmd_append(&cmd, "emar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
+      nob_cmd_append(&cmd, "emar", "rcs", WEB_FOLDER STATIC_LIB_NAME);
     } else {
       nob_cmd_append(&cmd, "ar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
     }
@@ -171,11 +174,11 @@ int main(int argc, char **argv) {
 
   nob_log(NOB_INFO, "Building the game");
   if (web) {
-    nob_cmd_append(&cmd, WEB_CC, "-o", BUILD_FOLDER "index.html",
+    nob_cmd_append(&cmd, WEB_CC, "-o", WEB_FOLDER "index.html",
                    SRC_FOLDER "main.c", "-Os", "-Wall",
-                   BUILD_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
+                   WEB_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
                    "./third_party/raylib/src/", "--shell-file", "./shell.html",
-                   "-L", "./" BUILD_FOLDER STATIC_LIB_NAME, platform);
+                   "-L", "./" WEB_FOLDER STATIC_LIB_NAME, platform);
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
     sv = nob_sb_to_sv(sb);
