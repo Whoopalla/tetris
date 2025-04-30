@@ -146,5 +146,5 @@ jobs:
         uses: peaceiris/actions-gh-pages@v4
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./artifacts/build/ # Adjust this path to where your WebAssembly files are located
+          publish_dir: ./artifacts/build/web # Adjust this path to where your WebAssembly files are located
           destination_dir: . # Root of gh-pages branch
