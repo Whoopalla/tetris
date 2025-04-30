@@ -27,6 +27,7 @@
 #define TICK 0.8f
 #define FAST_TICK_HORIZONTAL .1f
 #define FAST_TICK_VERTICAL 15.0f
+#define SINGLE_TAP_DELAY 0.15f
 
 #define CLEAR_LINE_POINTS 10
 #define CLEAR_ANIMATION_DURATION .3f
@@ -112,19 +113,21 @@ Color empty_cell_color;
 Color alive_cell_color;
 Color background_color;
 
-#define TOUCH_FAST_DOWN_W_HEIGHT_RATIO 0.2f
+#define TOUCH_FAST_DOWN_HEIGHT_RATIO 0.2f
 #define MAX_TOUCH_COUNT 2
 Vector2 touch_pos[2];
 int gesture;
 int touch_points_count;
 
-float last_tick_time;
-float delta_time;
-bool tick_time;
+float last_tick_time = 0;
+float delta_time = 0;
+bool tick_time = 0;
+float current_time = 0;
+float last_tap_time = 0;
 
 bool clear_animation = false;
-int clear_lowest_y;
-int clear_shift_amount;
+int clear_lowest_y = 0;
+int clear_shift_amount = 0;
 float clear_animation_time = 0;
 float clear_animation_switch_time = 0;
 
@@ -408,6 +411,7 @@ void UpdateDrawFrame() {
   touch_pos[1] = GetTouchPosition(1);
   touch_points_count = GetTouchPointCount();
 
+  current_time = GetTime();
   delta_time = GetFrameTime();
   last_tick_time += delta_time;
 
@@ -446,19 +450,37 @@ void UpdateDrawFrame() {
     }
   }
 
+  if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP) ||
+      (gesture == GESTURE_SWIPE_DOWN ||
+       gesture == GESTURE_SWIPE_UP &&
+           touch_pos[0].y <
+               screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO) ||
+      !FloatEquals(GetMouseWheelMove(), 0.0f)) {
+    rotate_tetromino();
+    last_tap_time = current_time;
+    goto _draw;
+  }
+
   if (IsKeyPressed(KEY_A) || IsKeyPressed(KEY_LEFT) ||
-      (gesture == GESTURE_TAP && touch_pos[0].x < screen_width / 2.0f)) {
+      (gesture == GESTURE_TAP &&
+       current_time - last_tap_time > SINGLE_TAP_DELAY &&
+       touch_pos[0].y <
+           screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO &&
+       touch_pos[0].x < screen_width / 2.0f)) {
     last_horizontal_tick = 0;
     move_tetromino(Left);
+    last_tap_time = current_time;
   }
+
   if (IsKeyPressed(KEY_D) || IsKeyPressed(KEY_RIGHT) ||
-      (gesture == GESTURE_TAP && touch_pos[0].x >= screen_width / 2.0f)) {
+      (gesture == GESTURE_TAP &&
+       current_time - last_tap_time > SINGLE_TAP_DELAY &&
+       touch_pos[0].y <
+           screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO &&
+       touch_pos[0].x >= screen_width / 2.0f)) {
     last_horizontal_tick = 0;
     move_tetromino(Right);
-  }
-  if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP) ||
-      (gesture == GESTURE_SWIPE_UP)) {
-    rotate_tetromino();
+    last_tap_time = current_time;
   }
 
   // Continuous press
@@ -469,8 +491,7 @@ void UpdateDrawFrame() {
     last_horizontal_tick = 0;
   }
 
-  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT) ||
-      (gesture == GESTURE_HOLD && touch_pos[0].x < screen_width / 2.0f)) {
+  if (IsKeyDown(KEY_A) || IsKeyDown(KEY_LEFT)) {
     last_horizontal_tick += delta_time;
 
     if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
@@ -479,8 +500,7 @@ void UpdateDrawFrame() {
     }
   }
 
-  if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT) ||
-      (gesture == GESTURE_HOLD && touch_pos[0].x >= screen_width / 2.0f)) {
+  if (IsKeyDown(KEY_D) || IsKeyDown(KEY_RIGHT)) {
     last_horizontal_tick += delta_time;
 
     if (last_horizontal_tick >= FAST_TICK_HORIZONTAL) {
@@ -491,7 +511,8 @@ void UpdateDrawFrame() {
 
   if ((IsKeyDown(KEY_S) || IsKeyDown(KEY_DOWN)) ||
       (gesture == GESTURE_HOLD &&
-       touch_pos[0].y >= screen_width * TOUCH_FAST_DOWN_W_HEIGHT_RATIO)) {
+       touch_pos[0].y >=
+           screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO)) {
     last_tick_time += FAST_TICK_VERTICAL * delta_time;
   }
 
@@ -523,7 +544,7 @@ int main(void) {
   SetWindowState(FLAG_WINDOW_MAXIMIZED);
 #endif
 
-  SetGesturesEnabled(GESTURE_TAP | GESTURE_HOLD | GESTURE_SWIPE_UP);
+  SetGesturesEnabled(GESTURE_TAP | GESTURE_SWIPE_DOWN | GESTURE_SWIPE_UP);
 
   empty_cell_color = GetColor(0x1b4965FF);
   alive_cell_color = GetColor(0x5fa8d3FF);
