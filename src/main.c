@@ -168,11 +168,11 @@ bool fast_rotate = false;
 
 Tetromino tetromino;
 int current_level_num = 1;
-Level init_level = (Level){.tick = INIT_TICK,
-                           .score_points = NEW_LEVEL_POINTS,
-                           .empty_cell_color = (Color){0x1B, 0x49, 0x65, 0xFF},
-                           .alive_cell_color = (Color){0x5F, 0xA8, 0xD3, 0xFF},
-                           .background_color = BLACK};
+Level init_level = {.tick = INIT_TICK,
+                    .score_points = NEW_LEVEL_POINTS,
+                    .empty_cell_color = (Color){0x1B, 0x49, 0x65, 0xFF},
+                    .alive_cell_color = (Color){0x5F, 0xA8, 0xD3, 0xFF},
+                    .background_color = BLACK};
 Level current_level;
 
 size_t game_points = 0;
@@ -368,7 +368,7 @@ bool clear_animation_done(void) {
 
 void game_over(void) {
   current_level = init_level;
-	current_level_num = 0;
+  current_level_num = 0;
   game_points = 0;
   for (size_t y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1;
        y >= BOARD_HEIGHT_EXTRA; y--) {
