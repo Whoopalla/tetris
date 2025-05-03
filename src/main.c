@@ -25,7 +25,7 @@
 #define CELL_WIDTH_RATIO 0.05
 #define INIT_TICK 0.8f
 #define TICK_INC 0.05
-#define FAST_TICK_HORIZONTAL .1f
+#define FAST_TICK_HORIZONTAL .05f
 #define FAST_TICK_VERTICAL 15.0f
 #define SINGLE_TAP_DELAY 0.15f
 
@@ -329,10 +329,10 @@ void clear_full_lines(void) {
     }
   }
   // dump_board();
-  clear_lowest_y = 0;
-  clear_shift_amount = 0;
   game_points += clear_shift_amount * CLEAR_LINE_POINTS;
   printf("Game Points: %lld\n", game_points);
+  clear_lowest_y = 0;
+  clear_shift_amount = 0;
 }
 
 bool clear_animation_done(void) {
@@ -470,10 +470,12 @@ void UpdateDrawFrame() {
 
   if (clear_animation) {
     if (clear_animation_done()) {
-      current_level = create_random_level();
-      current_level_num++;
-      printf("Level UP!\n");
-      printf("Tick time: %f\n", current_level.tick);
+      if (game_points / current_level_num == NEW_LEVEL_POINTS) {
+        current_level = create_random_level();
+        current_level_num++;
+        printf("Level UP!\n");
+        printf("Tick time: %f\n", current_level.tick);
+      }
     };
     goto _draw;
   }
