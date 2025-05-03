@@ -12,23 +12,24 @@
 #include <emscripten/emscripten.h>
 #endif
 
-// TODO: Add window icon
+// TODO: Add window icon. And for wasm version tab icon.
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
 //
-// TODO: Score
-// TODO: Gestures recognition
-// TODO: Game over animation?Жц
+// TODO: Game over animation? Each line clears up. Starting from the top.
+// TODO: Pouse menu
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
 #define BOARD_HEIGHT_EXTRA 2
 #define CELL_WIDTH_RATIO 0.05
-#define TICK 0.8f
+#define INIT_TICK 0.8f
+#define TICK_INC 0.05
 #define FAST_TICK_HORIZONTAL .1f
 #define FAST_TICK_VERTICAL 15.0f
 #define SINGLE_TAP_DELAY 0.15f
 
+#define NEW_LEVEL_POINTS 50
 #define CLEAR_LINE_POINTS 10
 #define CLEAR_ANIMATION_DURATION .3f
 #define CLEAR_ANIMATION_SWITCH_DURATION CLEAR_ANIMATION_DURATION / 3.0f
@@ -102,6 +103,31 @@ typedef struct {
   int state;
 } Tetromino;
 
+typedef struct {
+  int score_points;
+  float tick;
+  Color empty_cell_color;
+  Color alive_cell_color;
+  Color background_color;
+} Level;
+
+Color empty_cell_colors[] = {
+    {0xFB, 0xF8, 0xCC, 0xFF}, {0xFD, 0xE4, 0xCF, 0xFF},
+    {0xFF, 0xCF, 0xD2, 0xFF}, {0xF1, 0xC0, 0xE8, 0xFF},
+    {0xCF, 0xBA, 0xF0, 0xFF}, {0xA3, 0xC4, 0xF3, 0xFF},
+    {0x90, 0xDB, 0xF4, 0xFF}, {0x8E, 0xEC, 0xF5, 0xFF},
+    {0x98, 0xF5, 0xE1, 0xFF}, {0xB9, 0xFB, 0xC0, 0xFF}};
+
+Color alive_cell_colors[] = {{0xB7, 0x09, 0x4C, 0xFF}, {0xA0, 0x1A, 0x58, 0xFF},
+                             {0x89, 0x2B, 0x64, 0xFF}, {0x72, 0x3C, 0x70, 0xFF},
+                             {0x5C, 0x4D, 0x7D, 0xFF}, {0x45, 0x5E, 0x89, 0xFF},
+                             {0x2E, 0x6F, 0x95, 0xFF}};
+
+Color background_colors[] = {
+    {0x04, 0x15, 0x1F, 0xFF}, {0x18, 0x3A, 0x37, 0xFF},
+    {0x7B, 0x90, 0x4B, 0xFF}, {0xA0, 0x6D, 0x26, 0xFF},
+    {0xC4, 0x49, 0x00, 0xFF}, {0x43, 0x25, 0x34, 0xFF}};
+
 bool board[BOARD_WIDTH][BOARD_HEIGHT + BOARD_HEIGHT_EXTRA] = {0};
 Tetromino tetromino_bag[7] = {0};
 int tetromino_bag_used = 0;
@@ -141,6 +167,13 @@ bool fast_shift_down = false;
 bool fast_rotate = false;
 
 Tetromino tetromino;
+int current_level_num = 1;
+Level init_level = (Level){.tick = INIT_TICK,
+                           .score_points = NEW_LEVEL_POINTS,
+                           .empty_cell_color = (Color){0x1B, 0x49, 0x65, 0xFF},
+                           .alive_cell_color = (Color){0x5F, 0xA8, 0xD3, 0xFF},
+                           .background_color = BLACK};
+Level current_level;
 
 size_t game_points = 0;
 
@@ -302,7 +335,7 @@ void clear_full_lines(void) {
   printf("Game Points: %lld\n", game_points);
 }
 
-bool clear_animation_do(void) {
+bool clear_animation_done(void) {
   int x, y;
   clear_animation_time += delta_time;
   clear_animation_switch_time += delta_time;
@@ -320,12 +353,6 @@ bool clear_animation_do(void) {
   if (clear_lowest_y != 0) {
     for (y = clear_lowest_y; y > clear_lowest_y - clear_shift_amount; y--) {
       for (x = 0; x < BOARD_WIDTH; x++) {
-        // printf("clear_animation_switch_time: %f\n",
-        //        clear_animation_switch_time);
-        // printf("Clear anim setting: %s\n",
-        //        clear_animation_switch_time >= CLEAR_ANIMATION_SWITCH_DURATION
-        //            ? "true"
-        //            : "false");
         board[x][y] =
             clear_animation_switch_time >= CLEAR_ANIMATION_SWITCH_DURATION
                 ? true
@@ -340,6 +367,8 @@ bool clear_animation_do(void) {
 }
 
 void game_over(void) {
+  current_level = init_level;
+	current_level_num = 0;
   game_points = 0;
   for (size_t y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1;
        y >= BOARD_HEIGHT_EXTRA; y--) {
@@ -400,8 +429,23 @@ void spawn_tetromino(void) {
   }
 }
 
+Level create_random_level(void) {
+  srand(time(NULL));
+  return (Level){.tick = current_level.tick - TICK_INC,
+                 .score_points = NEW_LEVEL_POINTS,
+                 .empty_cell_color =
+                     empty_cell_colors[rand() % (sizeof(empty_cell_colors) /
+                                                 sizeof(Color))],
+                 .alive_cell_color =
+                     alive_cell_colors[rand() % (sizeof(alive_cell_colors) /
+                                                 sizeof(Color))],
+                 .background_color =
+                     background_colors[rand() % (sizeof(background_colors) /
+                                                 sizeof(Color))]};
+}
+
 void UpdateDrawFrame() {
-  if (last_tick_time >= TICK) {
+  if (last_tick_time >= current_level.tick) {
     last_tick_time = 0.0;
     tick_time = true;
   }
@@ -425,13 +469,17 @@ void UpdateDrawFrame() {
            cell_width * BOARD_HEIGHT_EXTRA;
 
   if (clear_animation) {
-    clear_animation_do();
+    if (clear_animation_done()) {
+      current_level = create_random_level();
+      current_level_num++;
+      printf("Level UP!\n");
+      printf("Tick time: %f\n", current_level.tick);
+    };
     goto _draw;
   }
 
   if (tick_time) {
     if (tetromino_grounded()) {
-      // Spawn new one
       printf("Grounded! Type: %d\n", tetromino.type);
 
       for (size_t i = 0; i < BOARD_WIDTH; i++) {
@@ -451,10 +499,9 @@ void UpdateDrawFrame() {
   }
 
   if (IsKeyPressed(KEY_R) || IsKeyPressed(KEY_UP) ||
-      (gesture == GESTURE_SWIPE_DOWN ||
-       gesture == GESTURE_SWIPE_UP &&
-           touch_pos[0].y <
-               screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO) ||
+      ((gesture == GESTURE_SWIPE_DOWN || gesture == GESTURE_SWIPE_UP) &&
+       touch_pos[0].y <
+           screen_height - screen_height * TOUCH_FAST_DOWN_HEIGHT_RATIO) ||
       !FloatEquals(GetMouseWheelMove(), 0.0f)) {
     rotate_tetromino();
     last_tap_time = current_time;
@@ -518,18 +565,20 @@ void UpdateDrawFrame() {
 
 _draw:
   BeginDrawing();
-  ClearBackground(background_color);
+  ClearBackground(current_level.background_color);
   for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
        y++) {
     for (size_t x = 0; x < BOARD_WIDTH; x++) {
       if (board[x][y]) {
-        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
-                      cell_width - 5,
-                      alive_cell_color); // - 5 maybe something else
+        DrawRectangle(
+            x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
+            cell_width - 5,
+            current_level.alive_cell_color); // - 5 maybe something else
       } else {
-        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
-                      cell_width - 5,
-                      empty_cell_color); // - 5 maybe something else
+        DrawRectangle(
+            x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
+            cell_width - 5,
+            current_level.empty_cell_color); // - 5 maybe something else
       }
     }
   }
@@ -553,8 +602,7 @@ int main(void) {
   last_tick_time = 0;
   last_horizontal_tick = 0;
 
-  printf("I: %d L: %d J: %d T: %d S: %d Z: %d O: %d", I, L, J, T, S, Z, O);
-
+  current_level = init_level;
   refill_tetromino_bag();
   spawn_tetromino();
 
