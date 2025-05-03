@@ -629,7 +629,8 @@ int main(void) {
   SetWindowState(FLAG_WINDOW_MAXIMIZED);
 #endif
 
-  SetGesturesEnabled(GESTURE_TAP | GESTURE_SWIPE_DOWN | GESTURE_SWIPE_UP);
+  SetGesturesEnabled(GESTURE_TAP | GESTURE_HOLD | GESTURE_SWIPE_DOWN |
+                     GESTURE_SWIPE_UP);
 
   empty_cell_color = GetColor(0x1b4965FF);
   alive_cell_color = GetColor(0x5fa8d3FF);
