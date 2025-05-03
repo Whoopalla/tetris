@@ -18,6 +18,7 @@
 //
 // TODO: Game over animation? Each line clears up. Starting from the top.
 // TODO: Pouse menu
+// TODO: Why after game over tetromino is so low?
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
@@ -25,7 +26,7 @@
 #define CELL_WIDTH_RATIO 0.05
 #define INIT_TICK 0.8f
 #define TICK_INC 0.05
-#define FAST_TICK_HORIZONTAL .05f
+#define FAST_TICK_HORIZONTAL .06f
 #define FAST_TICK_VERTICAL 15.0f
 #define SINGLE_TAP_DELAY 0.15f
 
@@ -33,6 +34,8 @@
 #define CLEAR_LINE_POINTS 10
 #define CLEAR_ANIMATION_DURATION .3f
 #define CLEAR_ANIMATION_SWITCH_DURATION CLEAR_ANIMATION_DURATION / 3.0f
+
+#define GAME_OVER_ANIMATION_CELL_TIME .07f
 
 #define TET_I_STATES 2
 #define TET_L_STATES 4
@@ -156,6 +159,11 @@ int clear_lowest_y = 0;
 int clear_shift_amount = 0;
 float clear_animation_time = 0;
 float clear_animation_switch_time = 0;
+
+bool game_over_animation = false;
+float game_over_animation_time = 0;
+int game_over_animation_x;
+int game_over_animation_y;
 
 float last_horizontal_tick;
 bool horizontal_move = false;
@@ -368,14 +376,32 @@ bool clear_animation_done(void) {
 
 void game_over(void) {
   current_level = init_level;
-  current_level_num = 0;
+  current_level_num = 1;
   game_points = 0;
-  for (size_t y = BOARD_HEIGHT + BOARD_HEIGHT_EXTRA - 1;
-       y >= BOARD_HEIGHT_EXTRA; y--) {
-    for (size_t x = 0; x < BOARD_WIDTH; x++) {
-      board[x][y] = false;
+  game_over_animation = true;
+}
+
+bool game_over_animation_done(void) {
+  if (!game_over_animation)
+    return true;
+  int x, y;
+  game_over_animation_time += delta_time;
+  for (y = game_over_animation_y; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA; y++) {
+    for (x = game_over_animation_x; x < BOARD_WIDTH; x++) {
+      if (game_over_animation_time < GAME_OVER_ANIMATION_CELL_TIME)
+        return false;
+      if (board[x][y]) {
+        board[x][y] = false;
+        game_over_animation_time = 0;
+        return false;
+      } else {
+        continue;
+      }
     }
   }
+  game_over();
+  game_over_animation = false;
+  return true;
 }
 
 bool tetromino_grounded(void) {
@@ -468,6 +494,7 @@ void UpdateDrawFrame() {
   int y0 = screen_height - cell_width * BOARD_HEIGHT -
            cell_width * BOARD_HEIGHT_EXTRA;
 
+  // Clear up: remove clear_animation check. make like with game over
   if (clear_animation) {
     if (clear_animation_done()) {
       if (game_points / current_level_num == NEW_LEVEL_POINTS) {
@@ -480,13 +507,20 @@ void UpdateDrawFrame() {
     goto _draw;
   }
 
+  if (!game_over_animation_done()) {
+    goto _draw;
+  }
+
   if (tick_time) {
     if (tetromino_grounded()) {
       printf("Grounded! Type: %d\n", tetromino.type);
 
       for (size_t i = 0; i < BOARD_WIDTH; i++) {
         if (board[i][BOARD_HEIGHT_EXTRA]) {
-          game_over();
+          game_over_animation = true;
+          game_over_animation_y = BOARD_HEIGHT_EXTRA;
+          game_over_animation_x = 0;
+          goto _draw;
         }
       }
 
