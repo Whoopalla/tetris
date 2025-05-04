@@ -9,20 +9,19 @@
 #include <time.h>
 
 #ifndef __EMSCRIPTEN__
-#include "../favicon.h"
+#include "favicon.h"
 #endif
 
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
 
-// TODO: Add window icon. And for wasm version tab icon.
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
 //
-// TODO: Game over animation? Each line clears up. Starting from the top.
 // TODO: Pouse menu
 // TODO: Why after game over tetromino is so low?
+// TODO: Sound?
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
