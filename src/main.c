@@ -8,6 +8,10 @@
 #include <string.h>
 #include <time.h>
 
+#ifndef __EMSCRIPTEN__
+#include "../favicon.h"
+#endif
+
 #if defined(PLATFORM_WEB)
 #include <emscripten/emscripten.h>
 #endif
@@ -623,6 +627,15 @@ _draw:
 
 int main(void) {
   InitWindow(800, 900, "tetris");
+#ifndef __EMSCRIPTEN__
+  Image icon = {.data = icon_rgba,
+                .width = 32,
+                .height = 32,
+                .format = PIXELFORMAT_UNCOMPRESSED_R8G8B8A8,
+                .mipmaps = 1};
+  SetWindowIcon(icon);
+#endif
+
   SetWindowState(FLAG_WINDOW_RESIZABLE);
 
 #ifdef __EMSCRIPTEN__
@@ -650,6 +663,7 @@ int main(void) {
   while (!WindowShouldClose()) {
     UpdateDrawFrame();
   }
+
 #endif
   CloseWindow();
   return 0;

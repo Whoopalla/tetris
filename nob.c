@@ -190,6 +190,16 @@ int main(int argc, char **argv) {
     //   return 1;
     return 0;
   }
+
+// Windows icons
+#ifdef _WIN32
+  if (!nob_file_exists(BUILD_FOLDER "resource.o")) {
+    nob_cmd_append(&cmd, "windres", "./resources/resource.rc", "-o",
+                   BUILD_FOLDER "resource.o");
+    nob_cmd_run_sync_and_reset(&cmd);
+  }
+#endif
+
   nob_cmd_append(&cmd, DEFAULT_CC, "-o", BUILD_FOLDER "tetris",
                  SRC_FOLDER "main.c");
 
@@ -199,20 +209,19 @@ int main(int argc, char **argv) {
   if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", "./build/",
+  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", BUILD_FOLDER,
                  "-lraylib");
 #ifdef _WIN32
-  nob_cmd_append(&cmd, "-lopengl32", "-lgdi32", "-lwinmm");
+  nob_cmd_append(&cmd, BUILD_FOLDER "resource.o", "-lopengl32", "-lgdi32",
+                 "-lwinmm", "-static");
+  if (release) {
+    nob_cmd_append(&cmd, "-mwindows");
+  }
 #endif
 #ifdef __linux__
   nob_cmd_append(&cmd, "-lGL", "-ldl", "-lpthread", "-lX11", "-lm");
 #endif
 
-#ifdef _WIN32
-  nob_cmd_append(&cmd, "-static");
-#endif
-
-  // nob_cmd_render(cmd, &sb);
   if (!nob_cmd_run_sync(cmd))
     return 1;
 
