@@ -6,12 +6,13 @@
 #include "nob.h"
 
 #define BUILD_FOLDER "build/"
-#define WEB_FOLDER BUILD_FOLDER "web/"
+#define WEB_BUILD_FOLDER BUILD_FOLDER "web/"
 #define SRC_FOLDER "src/"
 #define PATH_TO_EMSCRIPTEN_SDK "C:/emsdk"
 #define PLATFORM "-DPLATFORM_DESKTOP"
 
 #if defined(_WIN32)
+#include <winbase.h>
 #define STATIC_LIB_NAME "raylib.lib"
 #include <direct.h>
 #define getcwd _getcwd
@@ -61,7 +62,7 @@ int main(int argc, char **argv) {
           if (strcmp(platform, "-DPLATFORM_WEB") == 0) {
             web = true;
             nob_log(NOB_INFO, "Compiling for web");
-            nob_mkdir_if_not_exists(WEB_FOLDER);
+            nob_mkdir_if_not_exists(WEB_BUILD_FOLDER);
           }
         }
       }
@@ -88,7 +89,7 @@ int main(int argc, char **argv) {
 
 #define RAYLIB_OBJ_COUNT sizeof(raylib_headers) / sizeof(char *)
 
-  if (release || (web && !nob_file_exists(WEB_FOLDER STATIC_LIB_NAME)) ||
+  if (release || (web && !nob_file_exists(WEB_BUILD_FOLDER STATIC_LIB_NAME)) ||
       (!web && !nob_file_exists(BUILD_FOLDER STATIC_LIB_NAME))) {
     // Raylib
     nob_log(NOB_INFO, "Building raylib.lib");
@@ -135,7 +136,7 @@ int main(int argc, char **argv) {
     nob_log(NOB_INFO, "Linking .o's");
     if (web) {
       cmd.count = 0;
-      nob_cmd_append(&cmd, "emar", "rcs", WEB_FOLDER STATIC_LIB_NAME);
+      nob_cmd_append(&cmd, "emar", "rcs", WEB_BUILD_FOLDER STATIC_LIB_NAME);
     } else {
       nob_cmd_append(&cmd, "ar", "rcs", BUILD_FOLDER STATIC_LIB_NAME);
     }
@@ -174,11 +175,12 @@ int main(int argc, char **argv) {
 
   nob_log(NOB_INFO, "Building the game");
   if (web) {
-    nob_cmd_append(&cmd, WEB_CC, "-o", WEB_FOLDER "index.html",
+    nob_copy_file("./favicon.png", WEB_BUILD_FOLDER "/favicon.png");
+    nob_cmd_append(&cmd, WEB_CC, "-o", WEB_BUILD_FOLDER "index.html",
                    SRC_FOLDER "main.c", "-Os", "-Wall",
-                   WEB_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
+                   WEB_BUILD_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
                    "./third_party/raylib/src/", "--shell-file", "./shell.html",
-                   "-L", "./" WEB_FOLDER STATIC_LIB_NAME, platform);
+                   "-L", "./" WEB_BUILD_FOLDER STATIC_LIB_NAME, platform);
     nob_cmd_render(cmd, &sb);
     nob_sb_append_null(&sb);
     sv = nob_sb_to_sv(sb);
@@ -209,8 +211,8 @@ int main(int argc, char **argv) {
   if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-  nob_cmd_append(&cmd, "-I", ".", "-I", "./third_party/raylib/src/", "-L", BUILD_FOLDER,
-                 "-lraylib");
+  nob_cmd_append(&cmd, "-I", ".", "-I", "./third_party/raylib/src/", "-L",
+                 BUILD_FOLDER, "-lraylib");
 #ifdef _WIN32
   nob_cmd_append(&cmd, BUILD_FOLDER "resource.o", "-lopengl32", "-lgdi32",
                  "-lwinmm", "-static");
