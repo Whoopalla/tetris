@@ -500,7 +500,7 @@ void UpdateDrawFrame() {
   // Clear up: remove clear_animation check. make like with game over
   if (clear_animation) {
     if (clear_animation_done()) {
-      if (game_points / current_level_num == NEW_LEVEL_POINTS) {
+      if (game_points >= NEW_LEVEL_POINTS * current_level_num) {
         current_level = create_random_level();
         current_level_num++;
         printf("Level UP!\n");

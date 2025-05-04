@@ -209,7 +209,7 @@ int main(int argc, char **argv) {
   if (release) {
     nob_cmd_append(&cmd, "-O3");
   }
-  nob_cmd_append(&cmd, "-I", "./third_party/raylib/src/", "-L", BUILD_FOLDER,
+  nob_cmd_append(&cmd, "-I", ".", "-I", "./third_party/raylib/src/", "-L", BUILD_FOLDER,
                  "-lraylib");
 #ifdef _WIN32
   nob_cmd_append(&cmd, BUILD_FOLDER "resource.o", "-lopengl32", "-lgdi32",
