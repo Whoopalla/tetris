@@ -26,10 +26,11 @@
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
 #define BOARD_HEIGHT_EXTRA 2
-#define CELL_WIDTH_RATIO 0.05
+#define CELL_WIDTH_RATIO 0.05f
+#define CELL_PADDING 120.0f * CELL_WIDTH_RATIO
 #define INIT_TICK 0.8f
 #define TICK_INC 0.05
-#define FAST_TICK_HORIZONTAL .06f
+#define FAST_TICK_HORIZONTAL .09f
 #define FAST_TICK_VERTICAL 15.0f
 #define SINGLE_TAP_DELAY 0.15f
 
@@ -391,7 +392,7 @@ bool game_over_animation_done(void) {
   game_over_animation_time += delta_time;
   for (y = game_over_animation_y; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA; y++) {
     for (x = game_over_animation_x; x < BOARD_WIDTH; x++) {
-      if (game_over_animation_time < GAME_OVER_ANIMATION_CELL_TIME)
+      if (game_over_animation_time < GAME_OVER_ANIMATION_CELL_TIME / y)
         return false;
       if (board[x][y]) {
         board[x][y] = false;
@@ -609,15 +610,19 @@ _draw:
        y++) {
     for (size_t x = 0; x < BOARD_WIDTH; x++) {
       if (board[x][y]) {
-        DrawRectangle(
-            x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
-            cell_width - 5,
-            current_level.alive_cell_color); // - 5 maybe something else
+        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
+                      cell_width - Clamp(CELL_PADDING, 1.0f,
+                                         1.0f + screen_height * 0.01f),
+                      cell_width - Clamp(CELL_PADDING, 1.0f,
+                                         1.0f + screen_height * 0.01f),
+                      current_level.alive_cell_color);
       } else {
-        DrawRectangle(
-            x0 + x * cell_width, y0 + y * cell_width, cell_width - 5,
-            cell_width - 5,
-            current_level.empty_cell_color); // - 5 maybe something else
+        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
+                      cell_width - Clamp(CELL_PADDING, 1.0f,
+                                         1.0f + screen_height * 0.01f),
+                      cell_width - Clamp(CELL_PADDING, 1.0f,
+                                         1.0f + screen_height * 0.01f),
+                      current_level.empty_cell_color);
       }
     }
   }
