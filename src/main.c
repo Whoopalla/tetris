@@ -16,6 +16,7 @@
 #include <emscripten/emscripten.h>
 #endif
 
+// TODO: In touch screen fast down move sometimes stops
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
 // move the piece away from the wall)
 //
@@ -493,10 +494,19 @@ void UpdateDrawFrame() {
   screen_height = GetScreenHeight();
 
   int cell_width = screen_height * CELL_WIDTH_RATIO;
+  if (screen_width / cell_width < BOARD_WIDTH) {
+    cell_width *= ((float)screen_width / cell_width) / (float)BOARD_WIDTH;
+    printf("chenged cell_width to : %d\n", cell_width);
+  }
 
-  int x0 = (screen_width - cell_width * BOARD_WIDTH) / 2;
-  int y0 = screen_height - cell_width * BOARD_HEIGHT -
-           cell_width * BOARD_HEIGHT_EXTRA;
+  int cell_padding = Clamp(CELL_PADDING, 1.0f, 1.0f + screen_height * 0.01f);
+
+  int x0 = (screen_width - cell_width * BOARD_WIDTH - cell_padding) / 2;
+  int y0 = (screen_height - cell_width * (BOARD_HEIGHT) - cell_padding) / 2;
+
+  printf("X0: %d Y0: %d | screen_width: %d screen_height: %d | cell_width: %d"
+         "cell_padding: %d\n",
+         x0, y0, screen_width, screen_height, cell_width, cell_padding);
 
   // Clear up: remove clear_animation check. make like with game over
   if (clear_animation) {
@@ -606,22 +616,17 @@ void UpdateDrawFrame() {
 _draw:
   BeginDrawing();
   ClearBackground(current_level.background_color);
-  for (size_t y = BOARD_HEIGHT_EXTRA; y < BOARD_HEIGHT + BOARD_HEIGHT_EXTRA;
-       y++) {
+  for (size_t y = 0; y < BOARD_HEIGHT; y++) {
     for (size_t x = 0; x < BOARD_WIDTH; x++) {
-      if (board[x][y]) {
-        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
-                      cell_width - Clamp(CELL_PADDING, 1.0f,
-                                         1.0f + screen_height * 0.01f),
-                      cell_width - Clamp(CELL_PADDING, 1.0f,
-                                         1.0f + screen_height * 0.01f),
+      if (board[x][y + BOARD_HEIGHT_EXTRA]) {
+        DrawRectangle(x0 + x * cell_width + cell_padding,
+                      y0 + y * cell_width + cell_padding,
+                      cell_width - cell_padding, cell_width - cell_padding,
                       current_level.alive_cell_color);
       } else {
-        DrawRectangle(x0 + x * cell_width, y0 + y * cell_width,
-                      cell_width - Clamp(CELL_PADDING, 1.0f,
-                                         1.0f + screen_height * 0.01f),
-                      cell_width - Clamp(CELL_PADDING, 1.0f,
-                                         1.0f + screen_height * 0.01f),
+        DrawRectangle(x0 + x * cell_width + cell_padding,
+                      y0 + y * cell_width + cell_padding,
+                      cell_width - cell_padding, cell_width - cell_padding,
                       current_level.empty_cell_color);
       }
     }
