@@ -16,10 +16,13 @@
 #include <emscripten/emscripten.h>
 #endif
 
+// TODO: Maybe fast down movement should be incremental, so that right after
+// tet is grounded it resets, and not affects the newly spawned tet
+
 // TODO: In touch screen fast down move sometimes stops
 // TODO: Maybe implement kick rotations (Check if rotation is possible if you
-// move the piece away from the wall)
-//
+// move the piece away from the wall) -- kinda didn't liked it
+
 // TODO: Pouse menu
 // TODO: Why after game over tetromino is so low?
 // TODO: Sound?
@@ -326,6 +329,21 @@ bool full_lines(void) {
   return clear_lowest_y != 0;
 }
 
+Level create_random_level(void) {
+  srand(time(NULL));
+  return (Level){.tick = current_level.tick - TICK_INC,
+                 .score_points = NEW_LEVEL_POINTS,
+                 .empty_cell_color =
+                     empty_cell_colors[rand() % (sizeof(empty_cell_colors) /
+                                                 sizeof(Color))],
+                 .alive_cell_color =
+                     alive_cell_colors[rand() % (sizeof(alive_cell_colors) /
+                                                 sizeof(Color))],
+                 .background_color =
+                     background_colors[rand() % (sizeof(background_colors) /
+                                                 sizeof(Color))]};
+}
+
 void clear_full_lines(void) {
   printf("clear_lowest_y: %d clear_shift_amount: %d\n", clear_lowest_y,
          clear_shift_amount);
@@ -346,9 +364,18 @@ void clear_full_lines(void) {
   printf("Game Points: %lld\n", game_points);
   clear_lowest_y = 0;
   clear_shift_amount = 0;
+
+  if (game_points >= NEW_LEVEL_POINTS * current_level_num) {
+    current_level = create_random_level();
+    current_level_num++;
+    printf("Level UP!\n");
+  }
 }
 
 bool clear_animation_done(void) {
+  if (!clear_animation)
+    return true;
+
   int x, y;
   clear_animation_time += delta_time;
   clear_animation_switch_time += delta_time;
@@ -460,21 +487,6 @@ void spawn_tetromino(void) {
   }
 }
 
-Level create_random_level(void) {
-  srand(time(NULL));
-  return (Level){.tick = current_level.tick - TICK_INC,
-                 .score_points = NEW_LEVEL_POINTS,
-                 .empty_cell_color =
-                     empty_cell_colors[rand() % (sizeof(empty_cell_colors) /
-                                                 sizeof(Color))],
-                 .alive_cell_color =
-                     alive_cell_colors[rand() % (sizeof(alive_cell_colors) /
-                                                 sizeof(Color))],
-                 .background_color =
-                     background_colors[rand() % (sizeof(background_colors) /
-                                                 sizeof(Color))]};
-}
-
 void UpdateDrawFrame() {
   if (last_tick_time >= current_level.tick) {
     last_tick_time = 0.0;
@@ -502,23 +514,17 @@ void UpdateDrawFrame() {
   int cell_padding = Clamp(CELL_PADDING, 1.0f, 1.0f + screen_height * 0.01f);
 
   int x0 = (screen_width - cell_width * BOARD_WIDTH - cell_padding) / 2;
-  int y0 = (screen_height - cell_width * (BOARD_HEIGHT) - cell_padding) / 2;
-
-  printf("X0: %d Y0: %d | screen_width: %d screen_height: %d | cell_width: %d"
-         "cell_padding: %d\n",
-         x0, y0, screen_width, screen_height, cell_width, cell_padding);
+  int y0 = (screen_height - cell_width * (BOARD_HEIGHT)-cell_padding) / 2;
 
   // Clear up: remove clear_animation check. make like with game over
-  if (clear_animation) {
-    if (clear_animation_done()) {
-      if (game_points >= NEW_LEVEL_POINTS * current_level_num) {
-        current_level = create_random_level();
-        current_level_num++;
-        printf("Level UP!\n");
-        printf("Tick time: %f\n", current_level.tick);
-      }
-    };
+  if (!clear_animation_done()) {
     goto _draw;
+  }
+  if (game_points >= NEW_LEVEL_POINTS * current_level_num) {
+    current_level = create_random_level();
+    current_level_num++;
+    printf("Level UP!\n");
+    printf("Tick time: %f\n", current_level.tick);
   }
 
   if (!game_over_animation_done()) {
