@@ -69,13 +69,13 @@ typedef enum {
 
 int tetromino_types[] = {I, L, J, T, S, Z, O};
 
-int tet_max_widths[] = {
-    [I] = 4, [L] = 3, [J] = 3, [T] = 3, [S] = 3, [Z] = 3, [O] = 2};
+int tet_max_widths[] = {[I] = 4, [L] = 3, [J] = 3, [T] = 3,
+                        [S] = 3, [Z] = 3, [O] = 2};
 
-int tet_state_count[] = {
-    [I] = TET_I_STATES, [L] = TET_L_STATES, [J] = TET_J_STATES,
-    [T] = TET_T_STATES, [S] = TET_S_STATES, [Z] = TET_Z_STATES,
-    [O] = TET_O_STATES};
+int tet_state_count[] = {[I] = TET_I_STATES, [L] = TET_L_STATES,
+                         [J] = TET_J_STATES, [T] = TET_T_STATES,
+                         [S] = TET_S_STATES, [Z] = TET_Z_STATES,
+                         [O] = TET_O_STATES};
 
 #define TET_START_OFFSET BOARD_WIDTH / 2.0f
 // TODO: make them all horizontal so that they take only 2 vertical cells
@@ -145,6 +145,9 @@ int tetromino_bag_used = 0;
 
 static int screen_width;
 static int screen_height;
+
+Sound flip_sound;
+Sound down_sound;
 
 Color empty_cell_color;
 Color alive_cell_color;
@@ -282,6 +285,9 @@ _no_move:
 }
 
 void rotate_tetromino(void) {
+  if (tetromino.type == O) {
+    goto _no_rotation;
+  }
   int new_state = tetromino.state;
   board_remove_tetromino();
 
@@ -305,6 +311,7 @@ void rotate_tetromino(void) {
         Vector2Add(tet_states[tetromino.type + new_state][i], tetromino.pos);
     tetromino.parts[i] = new_part_pos;
   }
+  PlaySound(flip_sound);
 
 _no_rotation:
   board_add_tetromino();
@@ -425,6 +432,7 @@ bool game_over_animation_done(void) {
       if (board[x][y]) {
         board[x][y] = false;
         game_over_animation_time = 0;
+        PlaySound(down_sound);
         return false;
       } else {
         continue;
@@ -533,6 +541,7 @@ void UpdateDrawFrame() {
 
   if (tick_time) {
     if (tetromino_grounded()) {
+      PlaySound(down_sound);
       printf("Grounded! Type: %d\n", tetromino.type);
 
       for (size_t i = 0; i < BOARD_WIDTH; i++) {
@@ -642,6 +651,16 @@ _draw:
 
 int main(void) {
   InitWindow(800, 900, "tetris");
+  InitAudioDevice();
+
+  Wave flip_wave;
+  Wave down_wave;
+
+  if (flip_wave = LoadWave("./resources/flip.wav"), IsWaveValid(flip_wave))
+    flip_sound = LoadSoundFromWave(flip_wave);
+  if (down_wave = LoadWave("./resources/downed.wav"), IsWaveValid(down_wave))
+    down_sound = LoadSoundFromWave(down_wave);
+
 #ifndef __EMSCRIPTEN__
   Image icon = {.data = icon_rgba,
                 .width = 32,
@@ -680,6 +699,12 @@ int main(void) {
   }
 
 #endif
+
+  UnloadWave(flip_wave);
+  UnloadWave(down_wave);
+  UnloadSound(flip_sound);
+  UnloadSound(down_sound);
+
   CloseWindow();
   return 0;
 }
