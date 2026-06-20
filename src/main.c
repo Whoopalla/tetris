@@ -8,6 +8,10 @@
 #include <string.h>
 #include <time.h>
 
+// Sounds
+#include "downed.h"
+#include "flip.h"
+
 #ifndef __EMSCRIPTEN__
 #include "favicon.h"
 #endif
@@ -25,7 +29,6 @@
 
 // TODO: Pouse menu
 // TODO: Why after game over tetromino is so low?
-// TODO: Sound?
 
 #define BOARD_WIDTH 10
 #define BOARD_HEIGHT 20
@@ -656,10 +659,27 @@ int main(void) {
   Wave flip_wave;
   Wave down_wave;
 
-  if (flip_wave = LoadWave("./resources/flip.wav"), IsWaveValid(flip_wave))
+  flip_wave.data = MemAlloc(sizeof(FLIP_DATA));
+  memcpy(flip_wave.data, FLIP_DATA, sizeof(FLIP_DATA));
+  flip_wave.channels = FLIP_CHANNELS;
+  flip_wave.frameCount = FLIP_FRAME_COUNT;
+  flip_wave.sampleRate = FLIP_SAMPLE_RATE;
+  flip_wave.sampleSize = FLIP_SAMPLE_SIZE;
+
+  down_wave.data = MemAlloc(sizeof(DOWNED_DATA));
+  memcpy(down_wave.data, DOWNED_DATA, sizeof(DOWNED_DATA));
+  down_wave.channels = DOWNED_CHANNELS;
+  down_wave.frameCount = DOWNED_FRAME_COUNT;
+  down_wave.sampleRate = DOWNED_SAMPLE_RATE;
+  down_wave.sampleSize = DOWNED_SAMPLE_SIZE;
+
+  if (IsWaveValid(flip_wave))
     flip_sound = LoadSoundFromWave(flip_wave);
-  if (down_wave = LoadWave("./resources/downed.wav"), IsWaveValid(down_wave))
+  if (IsWaveValid(down_wave))
     down_sound = LoadSoundFromWave(down_wave);
+
+  UnloadWave(flip_wave);
+  UnloadWave(down_wave);
 
 #ifndef __EMSCRIPTEN__
   Image icon = {.data = icon_rgba,
@@ -700,11 +720,10 @@ int main(void) {
 
 #endif
 
-  UnloadWave(flip_wave);
-  UnloadWave(down_wave);
   UnloadSound(flip_sound);
   UnloadSound(down_sound);
 
+  CloseAudioDevice();
   CloseWindow();
   return 0;
 }
