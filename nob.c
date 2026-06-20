@@ -177,8 +177,7 @@ int main(int argc, char **argv) {
   if (web) {
     nob_copy_file("./favicon.png", WEB_BUILD_FOLDER "/favicon.png");
     nob_cmd_append(&cmd, WEB_CC, "-o", WEB_BUILD_FOLDER "index.html",
-                   SRC_FOLDER "main.c", SRC_FOLDER "flip.h",
-                   SRC_FOLDER "downed.h", "-Os", "-Wall",
+                   SRC_FOLDER "main.c", "-Os", "-Wall",
                    WEB_BUILD_FOLDER STATIC_LIB_NAME, "-s", "USE_GLFW=3", "-I",
                    "./third_party/raylib/src/", "--shell-file", "./shell.html",
                    "-L", "./" WEB_BUILD_FOLDER STATIC_LIB_NAME, platform);
@@ -204,8 +203,7 @@ int main(int argc, char **argv) {
 #endif
 
   nob_cmd_append(&cmd, DEFAULT_CC, "-o", BUILD_FOLDER "tetris",
-                 SRC_FOLDER "main.c", SRC_FOLDER "flip.h",
-                 SRC_FOLDER "downed.h");
+                 SRC_FOLDER "main.c");
 
   if (!release) {
     nob_cmd_append(&cmd, "-g", "-ggdb", "-Wall", "-Wextra");
