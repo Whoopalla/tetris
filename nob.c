@@ -85,7 +85,7 @@ int main(int argc, char **argv) {
       BUILD_FOLDER "rcore.o",     BUILD_FOLDER "rshapes.o",
       BUILD_FOLDER "rtextures.o", BUILD_FOLDER "rtext.o",
       BUILD_FOLDER "rglfw.o",     BUILD_FOLDER "utils.o",
-      BUILD_FOLDER "raudio.c"};
+      BUILD_FOLDER "raudio.o"};
 
 #define RAYLIB_OBJ_COUNT sizeof(raylib_headers) / sizeof(char *)
 
